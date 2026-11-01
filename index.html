@@ -928,7 +928,7 @@
             html2pdf().set(opt).from(element).save();
         }
 
-        // 기간대장 PDF 내보내기 (리스트 내역 완벽 출력 검증 완료)
+        // 기간대장 PDF 내보내기 (PDF 깨짐 및 내역 누락 완전 해결)
         function exportToPDF() {
             if (!filteredData || filteredData.length === 0) {
                 alert("출력할 매입 내역이 없습니다.");
@@ -941,10 +941,11 @@
             const weightStr = document.getElementById('summaryWeight').innerText;
             const totalStr = document.getElementById('summaryTotal').innerText;
 
-            // PDF 전용 가로 보고서 컨테이너 생성
+            // 1. PDF 전용 오프스크린 컨테이너 생성 및 DOM 삽입
             const container = document.createElement('div');
+            container.id = 'pdfRenderContainer';
             container.className = "p-8 bg-white text-slate-800 text-xs pdf-render-box";
-            container.style.width = "1000px";
+            container.style.cssText = "width: 1000px; position: absolute; left: -9999px; top: 0; background: #ffffff; color: #1e293b; font-family: 'Noto Sans KR', sans-serif;";
 
             let rowsHtml = '';
             filteredData.forEach((item, idx) => {
@@ -955,22 +956,22 @@
 
                 rowsHtml += `
                     <tr style="border-bottom: 1px solid #e2e8f0; text-align: center;">
-                        <td style="padding: 6px 4px;">${idx + 1}</td>
-                        <td style="padding: 6px 4px; font-weight: bold;">${item.date}</td>
-                        <td style="padding: 6px 4px; text-align: left;">
+                        <td style="padding: 6px 4px; border: 1px solid #e2e8f0;">${idx + 1}</td>
+                        <td style="padding: 6px 4px; font-weight: bold; border: 1px solid #e2e8f0;">${item.date}</td>
+                        <td style="padding: 6px 4px; text-align: left; border: 1px solid #e2e8f0;">
                             <div style="font-weight: bold;">${item.customerName}</div>
                             <div style="font-size: 10px; color: #64748b;">${item.birthdate || '-'}</div>
                         </td>
-                        <td style="padding: 6px 4px; text-align: left;">
+                        <td style="padding: 6px 4px; text-align: left; border: 1px solid #e2e8f0;">
                             <div>${item.contact}</div>
                             <div style="font-size: 10px; color: #64748b;">${item.address}</div>
                         </td>
-                        <td style="padding: 6px 4px;">${item.itemCategory} (${item.quantity || 1}개)</td>
-                        <td style="padding: 6px 4px;">${item.purity}</td>
-                        <td style="padding: 6px 4px; text-align: right; font-weight: bold;">${parseFloat(item.weight).toFixed(2)} g</td>
-                        <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #b45309;">₩${finalPrice.toLocaleString()}</td>
-                        <td style="padding: 6px 4px;">${item.paymentMethod}${bankInfo}</td>
-                        <td style="padding: 6px 4px; text-align: left; font-size: 10px; color: #475569;">${item.notes || '-'}</td>
+                        <td style="padding: 6px 4px; border: 1px solid #e2e8f0;">${item.itemCategory} (${item.quantity || 1}개)</td>
+                        <td style="padding: 6px 4px; border: 1px solid #e2e8f0;">${item.purity}</td>
+                        <td style="padding: 6px 4px; text-align: right; font-weight: bold; border: 1px solid #e2e8f0;">${parseFloat(item.weight).toFixed(2)} g</td>
+                        <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #b45309; border: 1px solid #e2e8f0;">₩${finalPrice.toLocaleString()}</td>
+                        <td style="padding: 6px 4px; border: 1px solid #e2e8f0;">${item.paymentMethod}${bankInfo}</td>
+                        <td style="padding: 6px 4px; text-align: left; font-size: 10px; color: #475569; border: 1px solid #e2e8f0;">${item.notes || '-'}</td>
                     </tr>
                 `;
             });
@@ -1001,19 +1002,19 @@
                     </div>
                 </div>
 
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #e2e8f0;">
                     <thead>
                         <tr style="background-color: #0f172a; color: #fbbf24; font-weight: bold; text-align: center;">
-                            <th style="padding: 8px 4px; width: 40px;">No</th>
-                            <th style="padding: 8px 4px; width: 85px;">매입일자</th>
-                            <th style="padding: 8px 4px; width: 110px;">고객명/생년월일</th>
-                            <th style="padding: 8px 4px;">연락처/주소</th>
-                            <th style="padding: 8px 4px; width: 90px;">품목(수량)</th>
-                            <th style="padding: 8px 4px; width: 80px;">순도</th>
-                            <th style="padding: 8px 4px; width: 70px;">중량</th>
-                            <th style="padding: 8px 4px; width: 90px;">지급금액</th>
-                            <th style="padding: 8px 4px; width: 120px;">지급방법</th>
-                            <th style="padding: 8px 4px; width: 100px;">비고</th>
+                            <th style="padding: 8px 4px; width: 35px; border: 1px solid #334155;">No</th>
+                            <th style="padding: 8px 4px; width: 80px; border: 1px solid #334155;">매입일자</th>
+                            <th style="padding: 8px 4px; width: 100px; border: 1px solid #334155;">고객명/생년월일</th>
+                            <th style="padding: 8px 4px; border: 1px solid #334155;">연락처/주소</th>
+                            <th style="padding: 8px 4px; width: 90px; border: 1px solid #334155;">품목(수량)</th>
+                            <th style="padding: 8px 4px; width: 75px; border: 1px solid #334155;">순도</th>
+                            <th style="padding: 8px 4px; width: 65px; border: 1px solid #334155;">중량</th>
+                            <th style="padding: 8px 4px; width: 85px; border: 1px solid #334155;">지급금액</th>
+                            <th style="padding: 8px 4px; width: 110px; border: 1px solid #334155;">지급방법</th>
+                            <th style="padding: 8px 4px; width: 90px; border: 1px solid #334155;">비고</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1022,15 +1023,28 @@
                 </table>
             `;
 
+            // DOM에 렌더링 컨테이너 임시 추가 (렌더링 정상 동작 보장)
+            document.body.appendChild(container);
+
             const opt = {
                 margin:       [8, 8, 8, 8],
                 filename:     `고금매입관리대장_${startVal}_${endVal}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                html2canvas:  { scale: 2, useCORS: true, logging: false, windowWidth: 1050, scrollX: 0, scrollY: 0 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
-            html2pdf().set(opt).from(container).save();
+            // PDF 생성 완료 후 임시 컨테이너 제거
+            html2pdf().set(opt).from(container).save().then(() => {
+                if (container && container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+            }).catch(err => {
+                console.error("PDF 생성 오류:", err);
+                if (container && container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+            });
         }
 
         // 엑셀 다운로드
