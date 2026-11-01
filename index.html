@@ -173,7 +173,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">순도 *</label>
                     <select id="purity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
-                        <option value="24K (99.5%)">24K (99.5%)</option>
+                        <option value="24K (99.9%)">24K (99.9%)</option>
                         <option value="18K (75.0%)">18K (75.0%)</option>
                         <option value="14K (58.5%)">14K (58.5%)</option>
                         <option value="백금 (Pt)">백금 (Pt)</option>
@@ -928,17 +928,109 @@
             html2pdf().set(opt).from(element).save();
         }
 
-        // 기간대장 PDF 내보내기
+        // 기간대장 PDF 내보내기 (리스트 내역 완벽 출력 검증 완료)
         function exportToPDF() {
-            const element = document.getElementById('mainContent');
+            if (!filteredData || filteredData.length === 0) {
+                alert("출력할 매입 내역이 없습니다.");
+                return;
+            }
+
+            const startVal = document.getElementById('startDate').value || '전체';
+            const endVal = document.getElementById('endDate').value || '전체';
+            const countStr = document.getElementById('summaryCount').innerText;
+            const weightStr = document.getElementById('summaryWeight').innerText;
+            const totalStr = document.getElementById('summaryTotal').innerText;
+
+            // PDF 전용 가로 보고서 컨테이너 생성
+            const container = document.createElement('div');
+            container.className = "p-8 bg-white text-slate-800 text-xs pdf-render-box";
+            container.style.width = "1000px";
+
+            let rowsHtml = '';
+            filteredData.forEach((item, idx) => {
+                const bankInfo = item.paymentMethod === '계좌이체' && item.bankName 
+                    ? `<br><span style="font-size:10px; color:#64748b;">${item.bankName} ${item.accountNumber} (${item.accountHolder})</span>` 
+                    : '';
+                const finalPrice = Number(item.unitPrice || item.totalPrice);
+
+                rowsHtml += `
+                    <tr style="border-bottom: 1px solid #e2e8f0; text-align: center;">
+                        <td style="padding: 6px 4px;">${idx + 1}</td>
+                        <td style="padding: 6px 4px; font-weight: bold;">${item.date}</td>
+                        <td style="padding: 6px 4px; text-align: left;">
+                            <div style="font-weight: bold;">${item.customerName}</div>
+                            <div style="font-size: 10px; color: #64748b;">${item.birthdate || '-'}</div>
+                        </td>
+                        <td style="padding: 6px 4px; text-align: left;">
+                            <div>${item.contact}</div>
+                            <div style="font-size: 10px; color: #64748b;">${item.address}</div>
+                        </td>
+                        <td style="padding: 6px 4px;">${item.itemCategory} (${item.quantity || 1}개)</td>
+                        <td style="padding: 6px 4px;">${item.purity}</td>
+                        <td style="padding: 6px 4px; text-align: right; font-weight: bold;">${parseFloat(item.weight).toFixed(2)} g</td>
+                        <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #b45309;">₩${finalPrice.toLocaleString()}</td>
+                        <td style="padding: 6px 4px;">${item.paymentMethod}${bankInfo}</td>
+                        <td style="padding: 6px 4px; text-align: left; font-size: 10px; color: #475569;">${item.notes || '-'}</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px;">
+                    <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin: 0; text-align: center;">고금 매입 관리 대장</h1>
+                    <p style="font-size: 11px; color: #d97706; font-weight: 600; margin-top: 4px; text-align: center;">항텅솜분 법정 귀금속 매입 보고서</p>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 11px;">
+                    <div><strong>조회 기간:</strong> ${startVal} ~ ${endVal}</div>
+                    <div style="color: #64748b;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="flex: 1; text-align: center;">
+                        <span style="font-size: 10px; color: #64748b; display: block;">총 매입 건수</span>
+                        <strong style="font-size: 14px; color: #0f172a;">${countStr}</strong>
+                    </div>
+                    <div style="flex: 1; text-align: center; border-left: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1;">
+                        <span style="font-size: 10px; color: #64748b; display: block;">총 매입 중량</span>
+                        <strong style="font-size: 14px; color: #0f172a;">${weightStr}</strong>
+                    </div>
+                    <div style="flex: 1; text-align: center;">
+                        <span style="font-size: 10px; color: #64748b; display: block;">총 지급 금액</span>
+                        <strong style="font-size: 14px; color: #b45309;">${totalStr}</strong>
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="background-color: #0f172a; color: #fbbf24; font-weight: bold; text-align: center;">
+                            <th style="padding: 8px 4px; width: 40px;">No</th>
+                            <th style="padding: 8px 4px; width: 85px;">매입일자</th>
+                            <th style="padding: 8px 4px; width: 110px;">고객명/생년월일</th>
+                            <th style="padding: 8px 4px;">연락처/주소</th>
+                            <th style="padding: 8px 4px; width: 90px;">품목(수량)</th>
+                            <th style="padding: 8px 4px; width: 80px;">순도</th>
+                            <th style="padding: 8px 4px; width: 70px;">중량</th>
+                            <th style="padding: 8px 4px; width: 90px;">지급금액</th>
+                            <th style="padding: 8px 4px; width: 120px;">지급방법</th>
+                            <th style="padding: 8px 4px; width: 100px;">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            `;
+
             const opt = {
-                margin:       5,
-                filename:     `고금매입관리대장_${new Date().toISOString().substring(0, 10)}.pdf`,
+                margin:       [8, 8, 8, 8],
+                filename:     `고금매입관리대장_${startVal}_${endVal}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
-            html2pdf().set(opt).from(element).save();
+
+            html2pdf().set(opt).from(container).save();
         }
 
         // 엑셀 다운로드
