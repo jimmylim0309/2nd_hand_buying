@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고금 매입 관리 대장</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (Excel Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf.js (PDF Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+        .print-only { display: none; }
+        
+        /* SB Gold 커스텀 테마 스토큰 */
+        .bg-sbgold-navy { background-color: #0F172A; }
+        .bg-sbgold-gold { background-color: #D97706; }
+        .text-sbgold-gold { color: #D97706; }
+        .border-sbgold-gold { border-color: #F59E0B; }
+
+        /* PDF 변환 시 배경 및 서명란 깨짐 방지 레이아웃 */
+        .pdf-render-box {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+
+    <!-- 상단 헤더 (SB Gold Style Navy & Gold Accent) -->
+    <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-30 border-b-2 border-amber-500">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-gem text-slate-950 text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
+                        <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded font-normal">항텅솜분 고금매입대장</span>
+                    </h1>
+                </div>
+            </div>
+            <div id="headerAuthArea" class="hidden">
+                <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs md:text-sm px-3.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-right-from-bracket"></i> 로그아웃
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 1. 비밀번호 입력 (초기 접근 제한 페이지) -->
+    <div id="loginPage" class="max-w-md mx-auto my-20 px-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="bg-slate-900 px-8 pt-8 pb-6 text-center border-b border-amber-500/30">
+                <div class="w-16 h-16 bg-gradient-to-tr from-amber-600 to-yellow-400 text-slate-950 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-lg mb-3">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-white tracking-tight">항텅솜분 고금매입 관리자 인증</h2>
+                <p class="text-xs text-amber-400/80 mt-1">고금 매입 관리 시스템 접근을 위해 인증을 진행해 주세요.</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="p-8 space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">관리자 비밀번호</label>
+                    <input type="password" id="loginPassword" placeholder="비밀번호 입력" required autofocus class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm">
+                </div>
+                <div id="loginError" class="text-xs text-rose-500 font-medium hidden flex items-center">
+                    <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> 비밀번호가 일치하지 않습니다.
+                </div>
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/50 font-bold py-3.5 rounded-xl shadow-lg transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-key"></i> 인증 및 접속하기
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. 메인 업무 화면 (비밀번호 인증 후 표시) -->
+    <main id="mainContent" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
+
+        <!-- 정보 입력 폼 -->
+        <section class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+            <div class="bg-slate-900 px-6 py-3.5 border-b border-amber-500/30 flex justify-between items-center text-white">
+                <h2 class="font-bold text-slate-100 text-base md:text-lg flex items-center">
+                    <i class="fa-solid fa-pen-to-square mr-2.5 text-amber-400"></i> 신규 고금 매입 등록
+                </h2>
+                <span class="text-xs text-amber-300/80 font-normal">* 법정 귀금속 매입 정보 기재</span>
+            </div>
+            
+            <form id="purchaseForm" onsubmit="handleFormSubmit(event)" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">매입 일자 *</label>
+                    <input type="date" id="date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">고객명 *</label>
+                    <input type="text" id="customerName" required placeholder="홍길동" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">생년월일 *</label>
+                    <input type="text" id="birthdate" maxlength="8" placeholder="19880101 (8자리)" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">연락처 *</label>
+                    <input type="tel" id="contact" required placeholder="010-0000-0000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+
+                <div class="md:col-span-2 lg:col-span-4">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">고객 주소 *</label>
+                    <input type="text" id="address" required placeholder="서울특별시 동작구 신대방동..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">품목 분류 *</label>
+                    <select id="itemCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                        <option value="반지">반지</option>
+                        <option value="목걸이">목걸이</option>
+                        <option value="팔찌">팔찌</option>
+                        <option value="골드바">골드바 / 덩어리</option>
+                        <option value="귀걸이">귀걸이</option>
+                        <option value="기타">기타 귀금속</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">순도 *</label>
+                    <select id="purity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                        <option value="24K (99.9%)">24K (99.9%)</option>
+                        <option value="18K (75.0%)">18K (75.0%)</option>
+                        <option value="14K (58.5%)">14K (58.5%)</option>
+                        <option value="백금 (Pt)">백금 (Pt)</option>
+                        <option value="은 (Ag)">은 (Ag)</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">수량 *</label>
+                    <input type="number" min="1" id="quantity" value="1" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">중량 (g) *</label>
+                    <input type="number" step="0.01" id="weight" required placeholder="3.75" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">매입단가 (원) *</label>
+                    <input type="number" id="unitPrice" required placeholder="95000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">지급방법 *</label>
+                    <select id="paymentMethod" onchange="toggleBankFields()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                        <option value="현금">현금</option>
+                        <option value="계좌이체">계좌이체</option>
+                    </select>
+                </div>
+
+                <!-- 계좌이체 선택 시 표시되는 영역 -->
+                <div id="bankFields" class="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2 hidden bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌은행</label>
+                        <input type="text" id="bankName" placeholder="KB국민" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌번호</label>
+                        <input type="text" id="accountNumber" placeholder="123-456-7890" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">예금주명</label>
+                        <input type="text" id="accountHolder" placeholder="홍길동" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 lg:col-span-3">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">비고 및 특이사항</label>
+                    <input type="text" id="notes" placeholder="기스 있음, 보증서 있음 등" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg shadow-md transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> 매입 등록하기
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 기간 검색 및 통계 요약 카드 -->
+        <section class="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b pb-4 border-slate-100">
+                <h2 class="font-bold text-slate-800 text-lg flex items-center">
+                    <i class="fa-solid fa-calendar-days mr-2 text-amber-600"></i> 기간별 매입 조회 & 내보내기
+                </h2>
+                
+                <!-- 기간 선택 필터 -->
+                <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <input type="date" id="startDate" onchange="filterData()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs md:text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                    <span class="text-slate-400">~</span>
+                    <input type="date" id="endDate" onchange="filterData()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs md:text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                    <button onclick="setQuickDate('today')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">오늘</button>
+                    <button onclick="setQuickDate('month')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">이번 달</button>
+                    <button onclick="setQuickDate('prevMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">전월</button>
+                    <button onclick="setQuickDate('year')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">올해</button>
+                    <button onclick="setQuickDate('all')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">전체</button>
+                </div>
+            </div>
+
+            <!-- 요약 집계 카드리스트 (골드 & 네이비 컨셉 적용) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-xl border border-amber-500/30 shadow">
+                    <span class="text-xs text-amber-400 font-semibold block">기간 내 총 매입 건수</span>
+                    <span id="summaryCount" class="text-2xl font-bold text-white mt-1 block">0 건</span>
+                </div>
+                <div class="bg-gradient-to-br from-amber-50 to-amber-100/80 p-4 rounded-xl border border-amber-200 shadow-sm">
+                    <span class="text-xs text-amber-800 font-semibold block">기간 내 총 중량</span>
+                    <span id="summaryWeight" class="text-2xl font-bold text-slate-900 mt-1 block">0.00 g</span>
+                </div>
+                <div class="bg-gradient-to-br from-amber-50 to-amber-100/80 p-4 rounded-xl border border-amber-200 shadow-sm">
+                    <span class="text-xs text-amber-800 font-semibold block">기간 내 총 지급금액</span>
+                    <span id="summaryTotal" class="text-2xl font-bold text-amber-700 mt-1 block">₩0</span>
+                </div>
+            </div>
+
+            <!-- 내보내기 버튼 모음 -->
+            <div class="flex flex-wrap justify-end gap-2 pt-2">
+                <button onclick="exportToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs md:text-sm px-3.5 py-2 rounded-lg font-medium shadow transition flex items-center">
+                    <i class="fa-solid fa-file-excel mr-1.5"></i> 엑셀(Excel) 다운로드
+                </button>
+                <button onclick="exportToPDF()" class="bg-slate-800 hover:bg-slate-900 text-amber-400 border border-amber-500/40 text-xs md:text-sm px-3.5 py-2 rounded-lg font-medium shadow transition flex items-center">
+                    <i class="fa-solid fa-file-pdf mr-1.5"></i> 기간대장 PDF 출력
+                </button>
+            </div>
+        </section>
+
+        <!-- 매입 데이터 내역 테이블 -->
+        <section class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs md:text-sm">
+                    <thead>
+                        <tr class="bg-slate-900 text-amber-400 font-semibold text-xs border-b border-amber-500/30">
+                            <th class="p-3 text-center">No</th>
+                            <th class="p-3">매입일자</th>
+                            <th class="p-3">고객명/생년월일</th>
+                            <th class="p-3">연락처/주소</th>
+                            <th class="p-3">품목(수량)</th>
+                            <th class="p-3">순도</th>
+                            <th class="p-3 text-right">중량(g)</th>
+                            <th class="p-3 text-right">매입단가(원)</th>
+                            <th class="p-3 text-center">지급방법</th>
+                            <th class="p-3 text-center no-print">영수증/PDF</th>
+                            <th class="p-3 text-center no-print">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchaseTableBody" class="divide-y divide-slate-100">
+                        <!-- 데이터 로드 영역 -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="emptyMessage" class="p-8 text-center text-slate-400 text-sm hidden">
+                조회된 매입 내역이 없습니다.
+            </div>
+        </section>
+    </main>
+
+    <!-- 매입 정보 수정 모달 -->
+    <div id="editModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-4 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center border-b pb-3 border-slate-200">
+                <h3 class="font-bold text-slate-900 text-lg flex items-center">
+                    <i class="fa-solid fa-pen-to-square mr-2 text-amber-600"></i> 매입 정보 수정
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="editForm" onsubmit="handleEditFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs md:text-sm">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">매입 일자 *</label>
+                    <input type="date" id="editDate" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">고객명 *</label>
+                    <input type="text" id="editCustomerName" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">생년월일 *</label>
+                    <input type="text" id="editBirthdate" maxlength="8" placeholder="19880101 (8자리)" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">연락처 *</label>
+                    <input type="tel" id="editContact" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div class="md:col-span-2 lg:col-span-4">
+                    <label class="block font-semibold text-slate-700 mb-1">고객 주소 *</label>
+                    <input type="text" id="editAddress" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">품목 분류 *</label>
+                    <select id="editItemCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="반지">반지</option>
+                        <option value="목걸이">목걸이</option>
+                        <option value="팔찌">팔찌</option>
+                        <option value="골드바">골드바 / 덩어리</option>
+                        <option value="귀걸이">귀걸이</option>
+                        <option value="기타">기타 귀금속</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">순도 *</label>
+                    <select id="editPurity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="24K (99.9%)">24K (99.9%)</option>
+                        <option value="18K (75.0%)">18K (75.0%)</option>
+                        <option value="14K (58.5%)">14K (58.5%)</option>
+                        <option value="백금 (Pt)">백금 (Pt)</option>
+                        <option value="은 (Ag)">은 (Ag)</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">수량 *</label>
+                    <input type="number" min="1" id="editQuantity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">중량 (g) *</label>
+                    <input type="number" step="0.01" id="editWeight" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">매입단가 (원) *</label>
+                    <input type="number" id="editUnitPrice" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">지급방법 *</label>
+                    <select id="editPaymentMethod" onchange="toggleEditBankFields()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="현금">현금</option>
+                        <option value="계좌이체">계좌이체</option>
+                    </select>
+                </div>
+
+                <div id="editBankFields" class="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2 hidden bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌은행</label>
+                        <input type="text" id="editBankName" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌번호</label>
+                        <input type="text" id="editAccountNumber" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">예금주명</label>
+                        <input type="text" id="editAccountHolder" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 lg:col-span-4">
+                    <label class="block font-semibold text-slate-700 mb-1">비고 및 특이사항</label>
+                    <input type="text" id="editNotes" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+
+                <div class="md:col-span-2 lg:col-span-4 flex justify-end space-x-2 pt-2 border-t border-slate-200">
+                    <button type="button" onclick="closeEditModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-4 rounded-lg transition">취소</button>
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-5 rounded-lg shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i> 수정사항 저장
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 건별 영수증 PDF 출력용 숨겨진 모달 / 템플릿 -->
+    <div id="receiptModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-6 overflow-y-auto max-h-[90vh]">
+            <!-- 영수증 본문 -->
+            <div id="receiptPDFContent" class="p-6 bg-white border border-slate-300 rounded-lg text-slate-800 space-y-4 pdf-render-box">
+                <div class="text-center border-b border-slate-300 pb-4">
+                    <h2 class="text-2xl font-extrabold tracking-widest text-slate-900">고금 매입 확인서</h2>
+                    <p class="text-xs text-amber-700 font-semibold mt-1">항텅솜분 귀금속 매입 법정 확인 영수증</p>
+                </div>
+                
+                <div class="flex justify-between text-xs text-slate-600">
+                    <span><strong>발행일자:</strong> <span id="rDate"></span></span>
+                    <span><strong>관리번호:</strong> <span id="rId"></span></span>
+                </div>
+
+                <table class="w-full text-xs border border-slate-300 border-collapse">
+                    <tbody>
+                        <tr class="bg-slate-50 border-b border-slate-300">
+                            <th class="p-2 border-r border-slate-300 text-left w-1/4">매도 고객명</th>
+                            <td class="p-2 border-r border-slate-300 font-semibold" id="rCustomer"></td>
+                            <th class="p-2 border-r border-slate-300 text-left w-1/4">생년월일</th>
+                            <td class="p-2" id="rBirth"></td>
+                        </tr>
+                        <tr class="border-b border-slate-300">
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">연락처</th>
+                            <td class="p-2 border-r border-slate-300" id="rContact"></td>
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">지급방법</th>
+                            <td class="p-2" id="rPayment"></td>
+                        </tr>
+                        <tr class="border-b border-slate-300">
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">주소</th>
+                            <td colspan="3" class="p-2" id="rAddress"></td>
+                        </tr>
+                        <tr id="rBankRow" class="border-b border-slate-300 hidden bg-amber-50/40">
+                            <th class="p-2 border-r border-slate-300 text-left">계좌정보</th>
+                            <td colspan="3" class="p-2" id="rBankInfo"></td>
+                        </tr>
+                        <tr class="border-b border-slate-300">
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">품목 / 수량</th>
+                            <td class="p-2 border-r border-slate-300" id="rItem"></td>
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">금 순도</th>
+                            <td class="p-2" id="rPurity"></td>
+                        </tr>
+                        <tr class="border-b border-slate-300">
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">실측 중량</th>
+                            <td class="p-2 border-r border-slate-300 font-bold text-amber-900" id="rWeight"></td>
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">매입단가</th>
+                            <td class="p-2" id="rUnitPrice"></td>
+                        </tr>
+                        <tr class="bg-amber-50/80 border-b border-slate-300">
+                            <th class="p-2 border-r border-slate-300 text-left text-amber-900 font-bold">총 지급금액</th>
+                            <td colspan="3" class="p-2 text-lg font-bold text-amber-900" id="rTotalPrice"></td>
+                        </tr>
+                        <tr>
+                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">비고</th>
+                            <td colspan="3" class="p-2" id="rNotes"></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- 안내사항 -->
+                <div class="text-[11px] text-slate-600 space-y-1 bg-slate-50 p-3 rounded border border-slate-200">
+                    <p>1. 본 확인서는 귀금속(고금) 매입거래 계약이 적법하게 이루어졌음을 증명합니다.</p>
+                    <p>2. 매도인은 본 제품이 도난품이나 장물이 아니며 정당한 소유권자임을 서명합니다.</p>
+                    <p>3. 매도인의 주민등록번호(생년월일)과 휴대폰번호는 본인확인을 위한 자료이며, 신분증(여권, 외국인등록증 등)으로 매도인 본인을 확인합니다.</p>
+                </div>
+
+                <!-- 서명 영역 -->
+                <div class="pt-6 flex justify-between items-end">
+                    <div class="text-center w-1/2">
+                        <p class="text-xs text-slate-700 font-medium mb-6">매도인 (<span id="rSignCustomerName" class="font-bold">고객</span>)</p>
+                        <p class="text-xs border-b-2 border-slate-500 w-36 mx-auto pb-1 text-slate-400">(인 / 서명)</p>
+                    </div>
+                    <div class="text-center w-1/2">
+                        <p class="text-xs text-slate-700 font-medium mb-6">매수인 (항텅솜분)</p>
+                        <p class="text-xs border-b-2 border-slate-500 w-36 mx-auto pb-1 text-slate-400">(직인 생략)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="flex justify-end space-x-2 no-print">
+                <button onclick="closeReceiptModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium">닫기</button>
+                <button onclick="downloadSinglePDF()" class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-xs px-4 py-2 rounded-lg font-medium shadow flex items-center gap-1">
+                    <i class="fa-solid fa-download"></i> 건별 PDF 저장
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 로직 JS -->
+    <script>
+        const INITIAL_ADMIN_PW = "jimmy0309!";
+
+        // 생년월일 포맷팅 헬퍼 (8자리 YYYYMMDD -> YYYY.MM.DD)
+        function formatBirthdate(raw) {
+            if (!raw) return '-';
+            const clean = raw.replace(/\D/g, '');
+            if (clean.length === 8) {
+                return `${clean.substring(0, 4)}.${clean.substring(4, 6)}.${clean.substring(6, 8)}`;
+            }
+            return raw;
+        }
+
+        // 샘플 초기 데이터
+        let purchaseData = [
+            { id: "G-1001", date: "2026-11-01", customerName: "김철수", birthdate: "1985.03.15", contact: "010-1234-5678", address: "서울 동작구 신대방동 100", itemCategory: "반지", purity: "24K (99.9%)", quantity: 1, weight: 37.50, unitPrice: 98000, totalPrice: 3675000, paymentMethod: "현금", bankName: "", accountNumber: "", accountHolder: "", notes: "순금 반지 10돈" },
+            { id: "G-1002", date: "2026-11-01", customerName: "이영희", birthdate: "1992.07.20", contact: "010-9876-5432", address: "서울 관악구 신림동 200", itemCategory: "목걸이", purity: "18K (75.0%)", quantity: 1, weight: 18.75, unitPrice: 72000, totalPrice: 1350000, paymentMethod: "계좌이체", bankName: "KB국민", accountNumber: "110-234-56789", accountHolder: "이영희", notes: "18k 체인 목걸이" }
+        ];
+
+        let filteredData = [...purchaseData];
+        let currentReceiptItem = null;
+
+        window.onload = function() {
+            document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+            setQuickDate('all');
+        };
+
+        // 로그인 처리
+        function handleLogin(e) {
+            e.preventDefault();
+            const pw = document.getElementById('loginPassword').value;
+            if (pw === INITIAL_ADMIN_PW) {
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('mainContent').classList.remove('hidden');
+                document.getElementById('headerAuthArea').classList.remove('hidden');
+                renderTable();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        // 로그아웃 처리
+        function handleLogout() {
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('hidden');
+            document.getElementById('headerAuthArea').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+        }
+
+        // 계좌이체 관련 항목 토글
+        function toggleBankFields() {
+            const method = document.getElementById('paymentMethod').value;
+            const bankFields = document.getElementById('bankFields');
+            if (method === '계좌이체') {
+                bankFields.classList.remove('hidden');
+            } else {
+                bankFields.classList.add('hidden');
+            }
+        }
+
+        // 수정 모달 내 계좌이체 항목 토글
+        function toggleEditBankFields() {
+            const method = document.getElementById('editPaymentMethod').value;
+            const bankFields = document.getElementById('editBankFields');
+            if (method === '계좌이체') {
+                bankFields.classList.remove('hidden');
+            } else {
+                bankFields.classList.add('hidden');
+            }
+        }
+
+        // 신규 매입 등록
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const weight = parseFloat(document.getElementById('weight').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
+            const quantity = parseInt(document.getElementById('quantity').value) || 1;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const rawBirth = document.getElementById('birthdate').value;
+
+            const newEntry = {
+                id: "G-" + (Math.floor(Math.random() * 9000) + 1000),
+                date: document.getElementById('date').value,
+                customerName: document.getElementById('customerName').value,
+                birthdate: formatBirthdate(rawBirth),
+                contact: document.getElementById('contact').value,
+                address: document.getElementById('address').value,
+                itemCategory: document.getElementById('itemCategory').value,
+                purity: document.getElementById('purity').value,
+                quantity: quantity,
+                weight: weight,
+                unitPrice: unitPrice,
+                totalPrice: Math.round(weight * unitPrice),
+                paymentMethod: paymentMethod,
+                bankName: paymentMethod === '계좌이체' ? document.getElementById('bankName').value : '',
+                accountNumber: paymentMethod === '계좌이체' ? document.getElementById('accountNumber').value : '',
+                accountHolder: paymentMethod === '계좌이체' ? document.getElementById('accountHolder').value : '',
+                notes: document.getElementById('notes').value || '-'
+            };
+
+            purchaseData.unshift(newEntry);
+            filterData();
+            
+            // 폼 초기화
+            document.getElementById('purchaseForm').reset();
+            document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('quantity').value = 1;
+            toggleBankFields();
+            alert("매입 등록이 완료되었습니다.");
+        }
+
+        // 빠른 날짜 필터
+        function setQuickDate(type) {
+            const today = new Date();
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+
+            // YYYY-MM-DD 형식 포맷팅 함수 (로컬 시간 기준)
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            if (type === 'today') {
+                const str = formatDate(today);
+                startDate.value = str;
+                endDate.value = str;
+            } else if (type === 'month') {
+                // 이번 달 1일 ~ 이번 달 말일
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                startDate.value = formatDate(firstDay);
+                endDate.value = formatDate(lastDay);
+            } else if (type === 'prevMonth') {
+                // 지난 달 1일 ~ 지난 달 말일
+                const firstDayPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const lastDayPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                startDate.value = formatDate(firstDayPrevMonth);
+                endDate.value = formatDate(lastDayPrevMonth);
+            } else if (type === 'year') {
+                const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
+                const lastDayOfYear = new Date(today.getFullYear(), 11, 31);
+                startDate.value = formatDate(firstDayOfYear);
+                endDate.value = formatDate(lastDayOfYear);
+            } else if (type === 'all') {
+                startDate.value = '';
+                endDate.value = '';
+            }
+            filterData();
+        }
+
+        // 날짜 필터링 및 데이터 집계
+        function filterData() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            filteredData = purchaseData.filter(item => {
+                if (start && item.date < start) return false;
+                if (end && item.date > end) return false;
+                return true;
+            });
+
+            renderTable();
+            updateSummary();
+        }
+
+        // 집계 카드 업데이트
+        function updateSummary() {
+            const count = filteredData.length;
+            const totalWeight = filteredData.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
+            const totalPrice = filteredData.reduce((sum, item) => sum + (parseFloat(item.totalPrice) || 0), 0);
+
+            document.getElementById('summaryCount').innerText = `${count.toLocaleString()} 건`;
+            document.getElementById('summaryWeight').innerText = `${totalWeight.toFixed(2)} g`;
+            document.getElementById('summaryTotal').innerText = `₩${totalPrice.toLocaleString()}`;
+        }
+
+        // 대장 테이블 렌더링
+        function renderTable() {
+            const tbody = document.getElementById('purchaseTableBody');
+            const emptyMsg = document.getElementById('emptyMessage');
+            tbody.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            } else {
+                emptyMsg.classList.add('hidden');
+            }
+
+            filteredData.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-amber-50/40 transition border-b border-slate-100";
+                
+                const bankDetail = item.paymentMethod === '계좌이체' 
+                    ? `<span class="block text-[11px] text-slate-500">${item.bankName} ${item.accountNumber} (${item.accountHolder})</span>` 
+                    : '';
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center text-slate-400 font-mono text-xs">${index + 1}</td>
+                    <td class="p-3 font-semibold text-slate-700 whitespace-nowrap">${item.date}</td>
+                    <td class="p-3">
+                        <div class="font-bold text-slate-800">${item.customerName}</div>
+                        <div class="text-[11px] text-slate-400 font-mono">${item.birthdate || '-'}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="text-xs text-slate-700">${item.contact}</div>
+                        <div class="text-[11px] text-slate-400 truncate max-w-[150px]" title="${item.address}">${item.address}</div>
+                    </td>
+                    <td class="p-3">
+                        <span class="font-medium text-slate-800">${item.itemCategory}</span>
+                        <span class="text-xs text-slate-500">(${item.quantity || 1}개)</span>
+                    </td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">${item.purity}</span>
+                    </td>
+                    <td class="p-3 text-right font-bold text-slate-800">${parseFloat(item.weight).toFixed(2)} g</td>
+                    <td class="p-3 text-right">
+                        <div class="font-bold text-amber-700">₩${Number(item.totalPrice).toLocaleString()}</div>
+                        <div class="text-[10px] text-slate-400">@ ₩${Number(item.unitPrice).toLocaleString()}</div>
+                    </td>
+                    <td class="p-3 text-center">
+                        <span class="px-2 py-0.5 rounded text-[11px] font-medium ${item.paymentMethod === '계좌이체' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${item.paymentMethod}</span>
+                        ${bankDetail}
+                    </td>
+                    <td class="p-3 text-center no-print whitespace-nowrap">
+                        <button onclick="openReceiptModal('${item.id}')" class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded shadow-sm transition">
+                            <i class="fa-solid fa-receipt mr-1"></i> 영수증
+                        </button>
+                    </td>
+                    <td class="p-3 text-center no-print whitespace-nowrap space-x-1">
+                        <button onclick="openEditModal('${item.id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs px-2 py-1 rounded transition">
+                            수정
+                        </button>
+                        <button onclick="deleteItem('${item.id}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs px-2 py-1 rounded transition">
+                            삭제
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 매입 정보 삭제
+        function deleteItem(id) {
+            if (confirm("해당 매입건을 삭제하시겠습니까?")) {
+                purchaseData = purchaseData.filter(item => item.id !== id);
+                filterData();
+            }
+        }
+
+        // 수정 모달 열기
+        function openEditModal(id) {
+            const item = purchaseData.find(p => p.id === id);
+            if (!item) return;
+
+            document.getElementById('editId').value = item.id;
+            document.getElementById('editDate').value = item.date;
+            document.getElementById('editCustomerName').value = item.customerName;
+            document.getElementById('editBirthdate').value = item.birthdate || '';
+            document.getElementById('editContact').value = item.contact;
+            document.getElementById('editAddress').value = item.address;
+            document.getElementById('editItemCategory').value = item.itemCategory;
+            document.getElementById('editPurity').value = item.purity;
+            document.getElementById('editQuantity').value = item.quantity || 1;
+            document.getElementById('editWeight').value = item.weight;
+            document.getElementById('editUnitPrice').value = item.unitPrice;
+            document.getElementById('editPaymentMethod').value = item.paymentMethod;
+            document.getElementById('editBankName').value = item.bankName || '';
+            document.getElementById('editAccountNumber').value = item.accountNumber || '';
+            document.getElementById('editAccountHolder').value = item.accountHolder || '';
+            document.getElementById('editNotes').value = item.notes === '-' ? '' : item.notes;
+
+            toggleEditBankFields();
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        // 수정 모달 닫기
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // 수정 Form 저장
+        function handleEditFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const index = purchaseData.findIndex(p => p.id === id);
+            if (index === -1) return;
+
+            const weight = parseFloat(document.getElementById('editWeight').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('editUnitPrice').value) || 0;
+            const paymentMethod = document.getElementById('editPaymentMethod').value;
+            const rawBirth = document.getElementById('editBirthdate').value;
+
+            purchaseData[index] = {
+                ...purchaseData[index],
+                date: document.getElementById('editDate').value,
+                customerName: document.getElementById('editCustomerName').value,
+                birthdate: formatBirthdate(rawBirth),
+                contact: document.getElementById('editContact').value,
+                address: document.getElementById('editAddress').value,
+                itemCategory: document.getElementById('editItemCategory').value,
+                purity: document.getElementById('editPurity').value,
+                quantity: parseInt(document.getElementById('editQuantity').value) || 1,
+                weight: weight,
+                unitPrice: unitPrice,
+                totalPrice: Math.round(weight * unitPrice),
+                paymentMethod: paymentMethod,
+                bankName: paymentMethod === '계좌이체' ? document.getElementById('editBankName').value : '',
+                accountNumber: paymentMethod === '계좌이체' ? document.getElementById('editAccountNumber').value : '',
+                accountHolder: paymentMethod === '계좌이체' ? document.getElementById('editAccountHolder').value : '',
+                notes: document.getElementById('editNotes').value || '-'
+            };
+
+            closeEditModal();
+            filterData();
+            alert("수정사항이 반영되었습니다.");
+        }
+
+        // 영수증 모달 열기 및 바로 바인딩
+        function openReceiptModal(id) {
+            const item = purchaseData.find(p => p.id === id);
+            if (!item) return;
+
+            currentReceiptItem = item;
+
+            document.getElementById('rDate').innerText = item.date;
+            document.getElementById('rId').innerText = item.id;
+            document.getElementById('rCustomer').innerText = item.customerName;
+            document.getElementById('rSignCustomerName').innerText = item.customerName;
+            document.getElementById('rBirth').innerText = item.birthdate || '-';
+            document.getElementById('rContact').innerText = item.contact;
+            document.getElementById('rAddress').innerText = item.address;
+            document.getElementById('rItem').innerText = `${item.itemCategory} (${item.quantity || 1}개)`;
+            document.getElementById('rPurity').innerText = item.purity;
+            document.getElementById('rWeight').innerText = `${parseFloat(item.weight).toFixed(2)} g`;
+            document.getElementById('rUnitPrice').innerText = `₩${Number(item.unitPrice).toLocaleString()} /g`;
+            document.getElementById('rTotalPrice').innerText = `₩${Number(item.totalPrice).toLocaleString()}`;
+            document.getElementById('rPayment').innerText = item.paymentMethod;
+            document.getElementById('rNotes').innerText = item.notes;
+
+            const bankRow = document.getElementById('rBankRow');
+            if (item.paymentMethod === '계좌이체') {
+                bankRow.classList.remove('hidden');
+                document.getElementById('rBankInfo').innerText = `${item.bankName} ${item.accountNumber} (예금주: ${item.accountHolder})`;
+            } else {
+                bankRow.classList.add('hidden');
+            }
+
+            document.getElementById('receiptModal').classList.remove('hidden');
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receiptModal').classList.add('hidden');
+        }
+
+        // 건별 PDF 내보내기 (화면 서명란 및 안내사항 전체 포함)
+        function downloadSinglePDF() {
+            if (!currentReceiptItem) return;
+            const element = document.getElementById('receiptPDFContent');
+            
+            const opt = {
+                margin:       [8, 8, 8, 8],
+                filename:     `고금매입확인서_${currentReceiptItem.customerName}_${currentReceiptItem.date}.pdf`,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true, 
+                    scrollY: 0,
+                    scrollX: 0,
+                    logging: false
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // 기간대장 PDF 내보내기
+        function exportToPDF() {
+            const element = document.getElementById('mainContent');
+            const opt = {
+                margin:       5,
+                filename:     `고금매입관리대장_${new Date().toISOString().substring(0, 10)}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // 엑셀 다운로드
+        function exportToExcel() {
+            const exportData = filteredData.map((item, index) => ({
+                "번호": index + 1,
+                "매입일자": item.date,
+                "고객명": item.customerName,
+                "생년월일": item.birthdate,
+                "연락처": item.contact,
+                "주소": item.address,
+                "품목": item.itemCategory,
+                "수량": item.quantity || 1,
+                "순도": item.purity,
+                "중량(g)": item.weight,
+                "매입단가(원)": item.unitPrice,
+                "총지급액(원)": item.totalPrice,
+                "지급방법": item.paymentMethod,
+                "계좌은행": item.bankName || '',
+                "계좌번호": item.accountNumber || '',
+                "예금주": item.accountHolder || '',
+                "비고": item.notes
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "고금매입대장");
+            XLSX.writeFile(workbook, `고금매입대장_${new Date().toISOString().substring(0, 10)}.xlsx`);
+        }
+    </script>
+</body>
+</html>
