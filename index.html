@@ -223,7 +223,7 @@
                     <input type="text" id="notes" placeholder="기스 있음, 보증서 있음 등" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
                 </div>
 
-                <!-- 비고 하단 고객 직접 서명란 추가 -->
+                <!-- 비고 하단 고객 직접 서명란 (4:3 비율로 컴팩트하게 조정) -->
                 <div class="md:col-span-2 lg:col-span-4 bg-amber-50/50 p-3 rounded-xl border border-amber-200">
                     <div class="flex justify-between items-center mb-1.5">
                         <label class="block text-xs font-bold text-slate-800">
@@ -233,8 +233,9 @@
                             <i class="fa-solid fa-rotate-left"></i> 서명 지우기
                         </button>
                     </div>
-                    <div class="border-2 border-dashed border-amber-300 rounded-lg bg-white relative overflow-hidden">
-                        <canvas id="formSignatureCanvas" class="w-full h-28 cursor-crosshair"></canvas>
+                    <!-- 가로세로 4:3 비율 패드 컨테이너 -->
+                    <div class="border-2 border-dashed border-amber-300 rounded-lg bg-white relative overflow-hidden max-w-sm mx-auto">
+                        <canvas id="formSignatureCanvas" class="w-full aspect-[4/3] block cursor-crosshair"></canvas>
                         <div id="formSignGuideText" class="absolute inset-0 flex items-center justify-center text-slate-400 text-xs pointer-events-none">
                             여기에 터치 또는 마우스로 서명해 주세요
                         </div>
@@ -532,6 +533,17 @@
     <script>
         const INITIAL_ADMIN_PW = "jimmy0309!";
 
+        // 전역 상태 변수
+        let purchaseData = [];
+        let filteredData = [];
+        let currentReceiptItem = null;
+
+        // 서명 패드 상태 변수
+        let isFormDrawing = false;
+        let hasFormSignature = false;
+        let formCanvas = null;
+        let formCtx = null;
+
         // 생년월일 포맷팅 헬퍼 (8자리 YYYYMMDD -> YYYY.MM.DD)
         function formatBirthdate(raw) {
             if (!raw) return '-';
@@ -542,53 +554,84 @@
             return raw;
         }
 
-        let purchaseData = [];
-        let filteredData = [];
-        let currentReceiptItem = null;
-
-        // 서명 캔버스 제어 변수 (관리자 등록 폼용)
-        let formCanvas, formCtx, isFormDrawing = false, hasFormSignature = false;
-
         window.onload = function() {
             document.getElementById('date').value = new Date().toISOString().substring(0, 10);
             setQuickDate('all');
             setupFormSignatureCanvas();
         };
 
-        // 매입 등록 폼 내부 서명 패드 초기화 및 터치/마우스 이벤트 설정
+        // 매입 등록 폼 내부 서명 패드 초기화 및 터치/마우스 이벤트 설정 (좌표 오차 완벽 해결)
         function setupFormSignatureCanvas() {
             formCanvas = document.getElementById('formSignatureCanvas');
             if (!formCanvas) return;
             formCtx = formCanvas.getContext('2d');
 
+            // 캔버스 실제 픽셀 크기를 화면 표시 크기와 1:1로 일치시키는 함수
             function resizeFormCanvas() {
-                const rect = formCanvas.parentElement.getBoundingClientRect();
-                const dpr = window.devicePixelRatio || 1;
+                const rect = formCanvas.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
                 
-                // 캔버스 고해상도 리사이징 (선명한 렌더링 보장)
-                formCanvas.width = rect.width * dpr;
-                formCanvas.height = 112 * dpr;
-                formCtx.scale(dpr, dpr);
-                clearFormSignatureCanvas();
+                // 기존 서명 내용 임시 저장 (크기 재조정 시 백화 현상 방지)
+                let tempImgData = null;
+                if (hasFormSignature) {
+                    tempImgData = formCanvas.toDataURL();
+                }
+
+                formCanvas.width = rect.width;
+                formCanvas.height = rect.height;
+                
+                formCtx.lineWidth = 4;
+                formCtx.lineCap = 'round';
+                formCtx.lineJoin = 'round';
+                formCtx.strokeStyle = '#000000';
+
+                if (tempImgData) {
+                    const img = new Image();
+                    img.onload = function() {
+                        formCtx.drawImage(img, 0, 0, rect.width, rect.height);
+                    };
+                    img.src = tempImgData;
+                }
             }
-            resizeFormCanvas();
+            
+            setTimeout(resizeFormCanvas, 150);
             window.addEventListener('resize', resizeFormCanvas);
 
+            // 포인터/터치 위치와 캔버스 그려지는 위치를 정확히 1:1 매칭시키는 좌표 함수
             function getPos(e) {
                 const rect = formCanvas.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                let clientX, clientY;
+                
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+
+                // 캔버스 화면 크기와 내부 픽셀간의 비율 계산 (좌표 밀림 오차 보정)
+                const scaleX = formCanvas.width / rect.width;
+                const scaleY = formCanvas.height / rect.height;
+                
                 return {
-                    x: clientX - rect.left,
-                    y: clientY - rect.top
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
                 };
             }
 
             function startDraw(e) {
+                // 서명 시작 시 크기를 다시 1:1 맞춤 검증하여 오차 제거
+                const rect = formCanvas.getBoundingClientRect();
+                if (formCanvas.width !== rect.width || formCanvas.height !== rect.height) {
+                    resizeFormCanvas();
+                }
+
                 isFormDrawing = true;
                 hasFormSignature = true;
                 const guide = document.getElementById('formSignGuideText');
                 if (guide) guide.classList.add('hidden');
+                
                 const pos = getPos(e);
                 formCtx.beginPath();
                 formCtx.moveTo(pos.x, pos.y);
@@ -598,8 +641,7 @@
                 if (!isFormDrawing) return;
                 const pos = getPos(e);
                 
-                // 검정색 서명선 & 선명한 굵기 설정 (2mm 수준의 가독성)
-                formCtx.lineWidth = 5;
+                formCtx.lineWidth = 4;
                 formCtx.lineCap = 'round';
                 formCtx.lineJoin = 'round';
                 formCtx.strokeStyle = '#000000';
@@ -614,17 +656,16 @@
 
             formCanvas.addEventListener('mousedown', startDraw);
             formCanvas.addEventListener('mousemove', draw);
-            formCanvas.addEventListener('mouseup', stopDraw);
+            window.addEventListener('mouseup', stopDraw);
 
-            formCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); });
-            formCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+            formCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); }, { passive: false });
+            formCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
             formCanvas.addEventListener('touchend', stopDraw);
         }
 
         function clearFormSignatureCanvas() {
             if (!formCtx || !formCanvas) return;
-            const rect = formCanvas.parentElement.getBoundingClientRect();
-            formCtx.clearRect(0, 0, rect.width, 112);
+            formCtx.clearRect(0, 0, formCanvas.width, formCanvas.height);
             hasFormSignature = false;
             const guide = document.getElementById('formSignGuideText');
             if (guide) guide.classList.remove('hidden');
