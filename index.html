@@ -12,6 +12,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- html2pdf.js (PDF Export) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Firebase SDK (v10 Modular via CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            getDocs, 
+            doc, 
+            updateDoc, 
+            deleteDoc, 
+            query, 
+            orderBy, 
+            onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+        // 1. Firebase 설정 (이미지에서 제공해주신 실 프로젝트 발급키 적용)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAOXTKLTrHfKLPCldszeoq_wEzm5XERSvY",
+            authDomain: "old-gold-buy.firebaseapp.com",
+            projectId: "old-gold-buy",
+            storageBucket: "old-gold-buy.firebasestorage.app",
+            messagingSenderId: "374556338780",
+            appId: "1:374556338780:web:d3e8f7b0f4ccfb695dd499",
+            measurementId: "G-HV6J304ECJ"
+        };
+
+        // Firebase 초기화
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const purchasesCol = collection(db, "purchases");
+
+        // 전역 스코프 연결
+        window.db = db;
+        window.purchasesCol = purchasesCol;
+        window.fbSDK = { addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot };
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Noto Sans KR', sans-serif; }
@@ -483,19 +522,31 @@
             return raw;
         }
 
-        // 샘플 초기 데이터
-        let purchaseData = [
-            { id: "G-1001", date: "2026-11-01", customerName: "김철수", birthdate: "1985.03.15", contact: "010-1234-5678", address: "서울 동작구 신대방동 100", itemCategory: "반지", purity: "24K (99.9%)", quantity: 1, weight: 37.50, unitPrice: 98000, totalPrice: 3675000, paymentMethod: "현금", bankName: "", accountNumber: "", accountHolder: "", notes: "순금 반지 10돈" },
-            { id: "G-1002", date: "2026-11-01", customerName: "이영희", birthdate: "1992.07.20", contact: "010-9876-5432", address: "서울 관악구 신림동 200", itemCategory: "목걸이", purity: "18K (75.0%)", quantity: 1, weight: 18.75, unitPrice: 72000, totalPrice: 1350000, paymentMethod: "계좌이체", bankName: "KB국민", accountNumber: "110-234-56789", accountHolder: "이영희", notes: "18k 체인 목걸이" }
-        ];
-
-        let filteredData = [...purchaseData];
+        let purchaseData = [];
+        let filteredData = [];
         let currentReceiptItem = null;
 
         window.onload = function() {
             document.getElementById('date').value = new Date().toISOString().substring(0, 10);
             setQuickDate('all');
         };
+
+        // Firebase 실시간 리스너 연결
+        function initFirebaseListener() {
+            if (!window.window.fbSDK) return;
+            const { onSnapshot, query, orderBy } = window.fbSDK;
+            const q = query(window.purchasesCol, orderBy("createdAt", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                purchaseData = snapshot.docs.map(docSnap => ({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                }));
+                filterData();
+            }, (error) => {
+                console.error("Firebase 데이터 읽기 오류:", error);
+            });
+        }
 
         // 로그인 처리
         function handleLogin(e) {
@@ -505,7 +556,9 @@
                 document.getElementById('loginPage').classList.add('hidden');
                 document.getElementById('mainContent').classList.remove('hidden');
                 document.getElementById('headerAuthArea').classList.remove('hidden');
-                renderTable();
+                
+                // Firebase 실시간 동기화 시작
+                initFirebaseListener();
             } else {
                 document.getElementById('loginError').classList.remove('hidden');
             }
@@ -542,8 +595,8 @@
             }
         }
 
-        // 신규 매입 등록
-        function handleFormSubmit(e) {
+        // 신규 매입 등록 (Firebase DB 저장)
+        async function handleFormSubmit(e) {
             e.preventDefault();
 
             const weight = parseFloat(document.getElementById('weight').value) || 0;
@@ -553,7 +606,6 @@
             const rawBirth = document.getElementById('birthdate').value;
 
             const newEntry = {
-                id: "G-" + (Math.floor(Math.random() * 9000) + 1000),
                 date: document.getElementById('date').value,
                 customerName: document.getElementById('customerName').value,
                 birthdate: formatBirthdate(rawBirth),
@@ -569,18 +621,28 @@
                 bankName: paymentMethod === '계좌이체' ? document.getElementById('bankName').value : '',
                 accountNumber: paymentMethod === '계좌이체' ? document.getElementById('accountNumber').value : '',
                 accountHolder: paymentMethod === '계좌이체' ? document.getElementById('accountHolder').value : '',
-                notes: document.getElementById('notes').value || '-'
+                notes: document.getElementById('notes').value || '-',
+                createdAt: new Date().toISOString()
             };
 
-            purchaseData.unshift(newEntry);
-            filterData();
-            
-            // 폼 초기화
-            document.getElementById('purchaseForm').reset();
-            document.getElementById('date').value = new Date().toISOString().substring(0, 10);
-            document.getElementById('quantity').value = 1;
-            toggleBankFields();
-            alert("매입 등록이 완료되었습니다.");
+            try {
+                if (window.fbSDK && window.purchasesCol) {
+                    await window.fbSDK.addDoc(window.purchasesCol, newEntry);
+                } else {
+                    newEntry.id = "G-" + Date.now();
+                    purchaseData.unshift(newEntry);
+                    filterData();
+                }
+                
+                document.getElementById('purchaseForm').reset();
+                document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+                document.getElementById('quantity').value = 1;
+                toggleBankFields();
+                alert("Firebase 데이터베이스에 매입 등록이 완료되었습니다.");
+            } catch (err) {
+                console.error("Firebase 저장 오류:", err);
+                alert("저장 중 오류가 발생했습니다.");
+            }
         }
 
         // 빠른 날짜 필터
@@ -589,7 +651,6 @@
             const startDate = document.getElementById('startDate');
             const endDate = document.getElementById('endDate');
 
-            // YYYY-MM-DD 형식 포맷팅 함수 (로컬 시간 기준)
             const formatDate = (date) => {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -602,13 +663,11 @@
                 startDate.value = str;
                 endDate.value = str;
             } else if (type === 'month') {
-                // 이번 달 1일 ~ 이번 달 말일
                 const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
                 const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
                 startDate.value = formatDate(firstDay);
                 endDate.value = formatDate(lastDay);
             } else if (type === 'prevMonth') {
-                // 지난 달 1일 ~ 지난 달 말일
                 const firstDayPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                 const lastDayPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
                 startDate.value = formatDate(firstDayPrevMonth);
@@ -717,11 +776,21 @@
             });
         }
 
-        // 매입 정보 삭제
-        function deleteItem(id) {
-            if (confirm("해당 매입건을 삭제하시겠습니까?")) {
-                purchaseData = purchaseData.filter(item => item.id !== id);
-                filterData();
+        // 매입 정보 삭제 (Firebase DB 연동)
+        async function deleteItem(id) {
+            if (confirm("해당 매입건을 데이터베이스에서 삭제하시겠습니까?")) {
+                try {
+                    if (window.fbSDK && window.db) {
+                        const targetRef = window.fbSDK.doc(window.db, "purchases", id);
+                        await window.fbSDK.deleteDoc(targetRef);
+                    } else {
+                        purchaseData = purchaseData.filter(item => item.id !== id);
+                        filterData();
+                    }
+                } catch (err) {
+                    console.error("Firebase 삭제 오류:", err);
+                    alert("삭제 중 오류가 발생했습니다.");
+                }
             }
         }
 
@@ -756,20 +825,17 @@
             document.getElementById('editModal').classList.add('hidden');
         }
 
-        // 수정 Form 저장
-        function handleEditFormSubmit(e) {
+        // 수정 Form 저장 (Firebase DB 연동)
+        async function handleEditFormSubmit(e) {
             e.preventDefault();
             const id = document.getElementById('editId').value;
-            const index = purchaseData.findIndex(p => p.id === id);
-            if (index === -1) return;
-
+            
             const weight = parseFloat(document.getElementById('editWeight').value) || 0;
             const unitPrice = parseFloat(document.getElementById('editUnitPrice').value) || 0;
             const paymentMethod = document.getElementById('editPaymentMethod').value;
             const rawBirth = document.getElementById('editBirthdate').value;
 
-            purchaseData[index] = {
-                ...purchaseData[index],
+            const updatedData = {
                 date: document.getElementById('editDate').value,
                 customerName: document.getElementById('editCustomerName').value,
                 birthdate: formatBirthdate(rawBirth),
@@ -788,9 +854,23 @@
                 notes: document.getElementById('editNotes').value || '-'
             };
 
-            closeEditModal();
-            filterData();
-            alert("수정사항이 반영되었습니다.");
+            try {
+                if (window.fbSDK && window.db) {
+                    const targetRef = window.fbSDK.doc(window.db, "purchases", id);
+                    await window.fbSDK.updateDoc(targetRef, updatedData);
+                } else {
+                    const index = purchaseData.findIndex(p => p.id === id);
+                    if (index !== -1) {
+                        purchaseData[index] = { ...purchaseData[index], ...updatedData };
+                        filterData();
+                    }
+                }
+                closeEditModal();
+                alert("수정사항이 반영되었습니다.");
+            } catch (err) {
+                console.error("Firebase 수정 오류:", err);
+                alert("수정 저장 중 오류가 발생했습니다.");
+            }
         }
 
         // 영수증 모달 열기 및 바로 바인딩
@@ -830,7 +910,7 @@
             document.getElementById('receiptModal').classList.add('hidden');
         }
 
-        // 건별 PDF 내보내기 (화면 서명란 및 안내사항 전체 포함)
+        // 건별 PDF 내보내기
         function downloadSinglePDF() {
             if (!currentReceiptItem) return;
             const element = document.getElementById('receiptPDFContent');
@@ -839,13 +919,7 @@
                 margin:       [8, 8, 8, 8],
                 filename:     `고금매입확인서_${currentReceiptItem.customerName}_${currentReceiptItem.date}.pdf`,
                 image:        { type: 'jpeg', quality: 1.0 },
-                html2canvas:  { 
-                    scale: 2, 
-                    useCORS: true, 
-                    scrollY: 0,
-                    scrollX: 0,
-                    logging: false
-                },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             
