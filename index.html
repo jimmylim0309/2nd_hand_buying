@@ -751,8 +751,7 @@
                     </td>
                     <td class="p-3 text-right font-bold text-slate-800">${parseFloat(item.weight).toFixed(2)} g</td>
                     <td class="p-3 text-right">
-                        <div class="font-bold text-amber-700">₩${Number(item.totalPrice).toLocaleString()}</div>
-                        <div class="text-[10px] text-slate-400">@ ₩${Number(item.unitPrice).toLocaleString()}</div>
+                        <div class="font-bold text-amber-700">₩${Number(item.unitPrice).toLocaleString()}</div>
                     </td>
                     <td class="p-3 text-center">
                         <span class="px-2 py-0.5 rounded text-[11px] font-medium ${item.paymentMethod === '계좌이체' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${item.paymentMethod}</span>
