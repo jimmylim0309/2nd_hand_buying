@@ -52,8 +52,8 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Noto Sans KR', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Noto Sans KR', 'Noto Sans Thai', sans-serif; }
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
@@ -78,183 +78,224 @@
 
     <!-- 상단 헤더 -->
     <header class="bg-slate-900 text-white shadow-xl sticky top-0 z-30 border-b-2 border-amber-500">
-        <div class="max-w-7xl mx-auto px-4 py-3.5 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchToCustomerMode()">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center shadow-md shrink-0">
                     <i class="fa-solid fa-gem text-slate-950 text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg md:text-xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-                        <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded font-normal">항텅솜분 고금매입대장</span>
+                    <h1 class="text-base md:text-xl font-bold tracking-tight text-slate-100 flex flex-wrap items-center gap-2">
+                        <span data-i18n="headerTitle" class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded font-normal">항텅솜분 고금매입대장</span>
+                        <span id="modeBadge" data-i18n="modeCustomer" class="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-medium">고객 입력 모드</span>
                     </h1>
                 </div>
             </div>
-            <div id="headerAuthArea" class="hidden flex items-center gap-2">
-                <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 text-xs md:text-sm px-3.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5">
-                    <i class="fa-solid fa-right-from-bracket"></i> 로그아웃
+
+            <!-- 우측 언어 선택 및 모드 전환 버튼 영역 -->
+            <div class="flex items-center gap-2">
+                <!-- 언어 선택 토글 -->
+                <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-xs">
+                    <button type="button" id="langBtnKo" onclick="setLanguage('ko')" class="px-2.5 py-1 rounded-md font-bold bg-amber-500 text-slate-950 transition">
+                        한국어
+                    </button>
+                    <button type="button" id="langBtnTh" onclick="setLanguage('th')" class="px-2.5 py-1 rounded-md font-bold text-slate-300 hover:text-white transition">
+                        ไทย
+                    </button>
+                </div>
+
+                <!-- 고객용 모드일 때 보이는 버튼 -->
+                <button id="btnAdminLoginModal" onclick="openLoginModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 text-xs md:text-sm px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-lock"></i> <span data-i18n="btnAdminMode">관리자 모드</span>
                 </button>
+
+                <!-- 관리자 모드일 때 보이는 버튼들 -->
+                <div id="adminHeaderControls" class="hidden flex items-center gap-2">
+                    <button onclick="switchToCustomerMode()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs md:text-sm px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5 font-medium">
+                        <i class="fa-solid fa-pen-to-square"></i> <span data-i18n="btnCustomerView">고객 입력 화면</span>
+                    </button>
+                    <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-rose-400 border border-rose-500/30 text-xs md:text-sm px-3 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="btnLogout">로그아웃</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- 1. 비밀번호 입력 (초기 접근 제한 페이지) -->
-    <div id="loginPage" class="max-w-md mx-auto my-20 px-4">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div class="bg-slate-900 px-8 pt-8 pb-6 text-center border-b border-amber-500/30">
-                <div class="w-16 h-16 bg-gradient-to-tr from-amber-600 to-yellow-400 text-slate-950 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-lg mb-3">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-white tracking-tight">항텅솜분 고금매입 관리자 인증</h2>
-                <p class="text-xs text-amber-400/80 mt-1">고금 매입 관리 시스템 접근을 위해 인증을 진행해 주세요.</p>
-            </div>
-
-            <form onsubmit="handleLogin(event)" class="p-8 space-y-5">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">관리자 비밀번호</label>
-                    <input type="password" id="loginPassword" placeholder="비밀번호 입력" required autofocus class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm">
-                </div>
-                <div id="loginError" class="text-xs text-rose-500 font-medium hidden flex items-center">
-                    <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> 비밀번호가 일치하지 않습니다.
-                </div>
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/50 font-bold py-3.5 rounded-xl shadow-lg transition text-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-key"></i> 인증 및 접속하기
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- 2. 메인 관리자 업무 화면 -->
-    <main id="mainContent" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
-
-        <!-- 정보 입력 폼 -->
-        <section class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-            <div class="bg-slate-900 px-6 py-3.5 border-b border-amber-500/30 flex justify-between items-center text-white">
+    <!-- 1. 고객용 모드 화면 (초기 기본 화면: 신규 고금 매입 등록) -->
+    <main id="customerSection" class="max-w-5xl mx-auto px-4 py-8 space-y-6">
+        <section class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div class="bg-slate-900 px-6 py-4 border-b border-amber-500/30 flex flex-wrap justify-between items-center gap-2 text-white">
                 <h2 class="font-bold text-slate-100 text-base md:text-lg flex items-center">
-                    <i class="fa-solid fa-pen-to-square mr-2.5 text-amber-400"></i> 신규 고금 매입 등록 (관리자 직접)
+                    <i class="fa-solid fa-pen-to-square mr-2.5 text-amber-400"></i> <span data-i18n="formTitle">신규 고금 매입 등록 (고객입력용)</span>
                 </h2>
-                <span class="text-xs text-amber-300/80 font-normal">* 법정 귀금속 매입 정보 기재</span>
+                <span data-i18n="formSubTitle" class="text-xs text-amber-300/80 font-normal">* 매도인 인적사항 및 매입 정보 기재</span>
             </div>
             
             <form id="purchaseForm" onsubmit="handleFormSubmit(event)" class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">매입 일자 *</label>
-                    <input type="date" id="date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblDate" class="block text-xs font-semibold text-slate-700 mb-1">매입 일자 *</label>
+                    <input type="date" id="date" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">고객명 *</label>
-                    <input type="text" id="customerName" required placeholder="홍길동" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblCustomerName" class="block text-xs font-semibold text-slate-700 mb-1">고객명 *</label>
+                    <input type="text" id="customerName" data-i18n-placeholder="phCustomerName" required placeholder="홍길동" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">생년월일 *</label>
-                    <input type="text" id="birthdate" maxlength="8" placeholder="19880101 (8자리)" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblBirthdate" class="block text-xs font-semibold text-slate-700 mb-1">생년월일 *</label>
+                    <input type="text" id="birthdate" maxlength="8" data-i18n-placeholder="phBirthdate" placeholder="19880101 (8자리)" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">연락처 *</label>
-                    <input type="tel" id="contact" required placeholder="010-0000-0000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblContact" class="block text-xs font-semibold text-slate-700 mb-1">연락처 *</label>
+                    <input type="tel" id="contact" data-i18n-placeholder="phContact" required placeholder="010-0000-0000" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
 
                 <div class="md:col-span-2 lg:col-span-4">
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">고객 주소 *</label>
-                    <input type="text" id="address" required placeholder="서울특별시 동작구 신대방동..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblAddress" class="block text-xs font-semibold text-slate-700 mb-1">고객 주소 *</label>
+                    <input type="text" id="address" data-i18n-placeholder="phAddress" required placeholder="서울특별시 동작구 신대방동..." class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">품목 분류 *</label>
-                    <select id="itemCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
-                        <option value="반지">반지</option>
-                        <option value="목걸이">목걸이</option>
-                        <option value="팔찌">팔찌</option>
-                        <option value="골드바">골드바 / 덩어리</option>
-                        <option value="귀걸이">귀걸이</option>
-                        <option value="기타">기타 귀금속</option>
+                    <label data-i18n="lblCategory" class="block text-xs font-semibold text-slate-700 mb-1">품목 분류 *</label>
+                    <select id="itemCategory" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                        <option value="반지" data-i18n="optRing">반지</option>
+                        <option value="목걸이" data-i18n="optNecklace">목걸이</option>
+                        <option value="팔찌" data-i18n="optBracelet">팔찌</option>
+                        <option value="골드바" data-i18n="optGoldbar">골드바 / 덩어리</option>
+                        <option value="귀걸이" data-i18n="optEarring">귀걸이</option>
+                        <option value="기타" data-i18n="optEtc">기타 귀금속</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">순도 *</label>
-                    <select id="purity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblPurity" class="block text-xs font-semibold text-slate-700 mb-1">순도 *</label>
+                    <select id="purity" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                         <option value="24K (99.9%)">24K (99.9%)</option>
                         <option value="18K (75.0%)">18K (75.0%)</option>
                         <option value="14K (58.5%)">14K (58.5%)</option>
-                        <option value="백금 (Pt)">백금 (Pt)</option>
-                        <option value="은 (Ag)">은 (Ag)</option>
-                        <option value="기타">기타</option>
+                        <option value="백금 (Pt)" data-i18n="optPlatinum">백금 (Pt)</option>
+                        <option value="은 (Ag)" data-i18n="optSilver">은 (Ag)</option>
+                        <option value="기타" data-i18n="optEtcPurity">기타</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">수량 *</label>
-                    <input type="number" min="1" id="quantity" value="1" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblQuantity" class="block text-xs font-semibold text-slate-700 mb-1">수량 *</label>
+                    <input type="number" min="1" id="quantity" value="1" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">중량 (g) *</label>
-                    <input type="number" step="0.01" id="weight" required placeholder="3.75" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">매입단가 (원) *</label>
-                    <input type="number" id="unitPrice" required placeholder="95000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label data-i18n="lblWeight" class="block text-xs font-semibold text-slate-700 mb-1">중량 (g) *</label>
+                    <input type="number" step="0.01" id="weight" required placeholder="3.75" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">지급방법 *</label>
-                    <select id="paymentMethod" onchange="toggleBankFields()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
-                        <option value="현금">현금</option>
-                        <option value="계좌이체">계좌이체</option>
+                    <label data-i18n="lblUnitPrice" class="block text-xs font-semibold text-slate-700 mb-1">매입단가/총지급액 (원) *</label>
+                    <input type="number" id="unitPrice" required placeholder="95000" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+
+                <div>
+                    <label data-i18n="lblPaymentMethod" class="block text-xs font-semibold text-slate-700 mb-1">지급방법 *</label>
+                    <select id="paymentMethod" onchange="toggleBankFields()" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                        <option value="현금" data-i18n="optCash">현금</option>
+                        <option value="계좌이체" data-i18n="optTransfer">계좌이체</option>
                     </select>
                 </div>
 
                 <!-- 계좌이체 영역 -->
                 <div id="bankFields" class="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2 hidden bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌은행</label>
-                        <input type="text" id="bankName" placeholder="KB국민" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                        <label data-i18n="lblBankName" class="block text-[11px] font-semibold text-slate-700 mb-1">계좌은행</label>
+                        <input type="text" id="bankName" data-i18n-placeholder="phBankName" placeholder="KB국민" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌번호</label>
+                        <label data-i18n="lblAccountNumber" class="block text-[11px] font-semibold text-slate-700 mb-1">계좌번호</label>
                         <input type="text" id="accountNumber" placeholder="123-456-7890" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">예금주명</label>
-                        <input type="text" id="accountHolder" placeholder="홍길동" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
+                        <label data-i18n="lblAccountHolder" class="block text-[11px] font-semibold text-slate-700 mb-1">예금주명</label>
+                        <input type="text" id="accountHolder" data-i18n-placeholder="phCustomerName" placeholder="홍길동" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
                     </div>
                 </div>
 
-                <div class="md:col-span-2 lg:col-span-3">
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">비고 및 특이사항</label>
-                    <input type="text" id="notes" placeholder="기스 있음, 보증서 있음 등" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
+                <div class="md:col-span-2 lg:col-span-4">
+                    <label data-i18n="lblNotes" class="block text-xs font-semibold text-slate-700 mb-1">비고 및 특이사항</label>
+                    <input type="text" id="notes" data-i18n-placeholder="phNotes" placeholder="기스 있음, 보증서 있음 등" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none">
                 </div>
 
-                <!-- 비고 하단 고객 직접 서명란 (4:3 비율로 컴팩트하게 조정) -->
-                <div class="md:col-span-2 lg:col-span-4 bg-amber-50/50 p-3 rounded-xl border border-amber-200">
-                    <div class="flex justify-between items-center mb-1.5">
+                <!-- 약관 확인 안내 문구 -->
+                <div class="md:col-span-2 lg:col-span-4 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                    <p class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-circle-info text-amber-600 mr-1"></i> <span data-i18n="legalTitle">귀금속 매입 법정 확인 안내</span></p>
+                    <p data-i18n="legalLine1">1. 본 확인서는 귀금속(고금) 매입거래 계약이 적법하게 이루어졌음을 증명합니다.</p>
+                    <p data-i18n="legalLine2">2. 매도인은 본 제품이 도난품이나 장물이 아니며 정당한 소유권자임을 서명합니다.</p>
+                    <p data-i18n="legalLine3">3. 매도인의 주민등록번호(생년월일)과 휴대폰번호는 본인확인을 위한 자료이며, 신분증(여권, 외국인등록증 등)으로 매도인 본인을 확인합니다.</p>
+                </div>
+
+                <!-- 비고 하단 고객 직접 서명란 -->
+                <div class="md:col-span-2 lg:col-span-4 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
+                    <div class="flex justify-between items-center mb-2">
                         <label class="block text-xs font-bold text-slate-800">
-                            <i class="fa-solid fa-signature text-amber-600 mr-1"></i> 고객(매도인) 전자 서명
+                            <i class="fa-solid fa-signature text-amber-600 mr-1"></i> <span data-i18n="lblSignature">고객(매도인) 전자 서명 *</span>
                         </label>
-                        <button type="button" onclick="clearFormSignatureCanvas()" class="text-xs text-rose-600 hover:text-rose-800 font-medium">
-                            <i class="fa-solid fa-rotate-left"></i> 서명 지우기
+                        <button type="button" onclick="clearFormSignatureCanvas()" class="text-xs text-rose-600 hover:text-rose-800 font-medium bg-white px-2.5 py-1 rounded border border-rose-200 shadow-sm">
+                            <i class="fa-solid fa-rotate-left"></i> <span data-i18n="btnClearSign">서명 지우기</span>
                         </button>
                     </div>
                     <!-- 가로세로 4:3 비율 패드 컨테이너 -->
-                    <div class="border-2 border-dashed border-amber-300 rounded-lg bg-white relative overflow-hidden max-w-sm mx-auto">
+                    <div class="border-2 border-dashed border-amber-300 rounded-lg bg-white relative overflow-hidden max-w-sm mx-auto shadow-inner">
                         <canvas id="formSignatureCanvas" class="w-full aspect-[4/3] block cursor-crosshair"></canvas>
-                        <div id="formSignGuideText" class="absolute inset-0 flex items-center justify-center text-slate-400 text-xs pointer-events-none">
+                        <div id="formSignGuideText" data-i18n="signGuide" class="absolute inset-0 flex items-center justify-center text-slate-400 text-xs pointer-events-none text-center px-2">
                             여기에 터치 또는 마우스로 서명해 주세요
                         </div>
                     </div>
                 </div>
 
-                <div class="md:col-span-2 lg:col-span-4 flex items-end justify-end">
-                    <button type="submit" class="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-plus"></i> 매입 등록하기
+                <div class="md:col-span-2 lg:col-span-4 flex items-center justify-end pt-2">
+                    <button type="submit" class="w-full md:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-base">
+                        <i class="fa-solid fa-check-circle"></i> <span data-i18n="btnSubmit">매입 정보 등록 완료</span>
                     </button>
                 </div>
             </form>
         </section>
+    </main>
 
+    <!-- 2. 관리자 비밀번호 인증 모달 -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden relative">
+            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl z-10">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="bg-slate-900 px-8 pt-8 pb-6 text-center border-b border-amber-500/30">
+                <div class="w-16 h-16 bg-gradient-to-tr from-amber-600 to-yellow-400 text-slate-950 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-lg mb-3">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h2 data-i18n="loginTitle" class="text-xl font-bold text-white tracking-tight">항텅솜분 관리자 인증</h2>
+                <p data-i18n="loginDesc" class="text-xs text-amber-400/80 mt-1">전체 고금 매입 내역 조회를 위해 비밀번호를 입력하세요.</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="p-8 space-y-5">
+                <div>
+                    <label data-i18n="lblPassword" class="block text-xs font-semibold text-slate-600 mb-1.5">관리자 비밀번호</label>
+                    <input type="password" id="loginPassword" data-i18n-placeholder="phPassword" placeholder="비밀번호 입력" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm">
+                </div>
+                <div id="loginError" class="text-xs text-rose-500 font-medium hidden flex items-center">
+                    <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> <span data-i18n="loginError">비밀번호가 일치하지 않습니다.</span>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeLoginModal()" data-i18n="btnCancel" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 rounded-xl transition text-sm">
+                        취소
+                    </button>
+                    <button type="submit" class="w-2/3 bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/50 font-bold py-3.5 rounded-xl shadow-lg transition text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-key"></i> <span data-i18n="btnAdminConnect">관리자 접속</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. 관리자용 모드 화면 (그동안 입력된 고금 내역 확인, 통계, 관리) -->
+    <main id="adminSection" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
         <!-- 기간 검색 및 통계 요약 카드 -->
         <section class="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b pb-4 border-slate-100">
                 <h2 class="font-bold text-slate-800 text-lg flex items-center">
-                    <i class="fa-solid fa-calendar-days mr-2 text-amber-600"></i> 기간별 매입 조회 & 내보내기
+                    <i class="fa-solid fa-calendar-days mr-2 text-amber-600"></i> <span data-i18n="adminSearchTitle">기간별 매입 내역 조회 & 통계</span>
                 </h2>
                 
                 <!-- 기간 선택 필터 -->
@@ -262,35 +303,43 @@
                     <input type="date" id="startDate" onchange="filterData()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs md:text-sm outline-none focus:ring-2 focus:ring-amber-500">
                     <span class="text-slate-400">~</span>
                     <input type="date" id="endDate" onchange="filterData()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs md:text-sm outline-none focus:ring-2 focus:ring-amber-500">
-                    <button onclick="setQuickDate('today')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">오늘</button>
-                    <button onclick="setQuickDate('month')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">이번 달</button>
-                    <button onclick="setQuickDate('prevMonth')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">전월</button>
-                    <button onclick="setQuickDate('year')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">올해</button>
-                    <button onclick="setQuickDate('all')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">전체</button>
+                    <button onclick="setQuickDate('today')" data-i18n="btnToday" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">오늘</button>
+                    <button onclick="setQuickDate('month')" data-i18n="btnMonth" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">이번 달</button>
+                    <button onclick="setQuickDate('prevMonth')" data-i18n="btnPrevMonth" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">전월</button>
+                    <button onclick="setQuickDate('year')" data-i18n="btnYear" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">올해</button>
+                    <button onclick="setQuickDate('all')" data-i18n="btnAll" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-medium">전체</button>
                 </div>
             </div>
 
             <!-- 요약 집계 카드 -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-xl border border-amber-500/30 shadow">
-                    <span class="text-xs text-amber-400 font-semibold block">기간 내 총 매입 건수</span>
+                    <span data-i18n="sumCountLabel" class="text-xs text-amber-400 font-semibold block">기간 내 총 매입 건수</span>
                     <span id="summaryCount" class="text-2xl font-bold text-white mt-1 block">0 건</span>
                 </div>
                 <div class="bg-gradient-to-br from-amber-50 to-amber-100/80 p-4 rounded-xl border border-amber-200 shadow-sm">
-                    <span class="text-xs text-amber-800 font-semibold block">기간 내 총 중량</span>
+                    <span data-i18n="sumWeightLabel" class="text-xs text-amber-800 font-semibold block">기간 내 총 중량</span>
                     <span id="summaryWeight" class="text-2xl font-bold text-slate-900 mt-1 block">0.00 g</span>
                 </div>
                 <div class="bg-gradient-to-br from-amber-50 to-amber-100/80 p-4 rounded-xl border border-amber-200 shadow-sm">
-                    <span class="text-xs text-amber-800 font-semibold block">기간 내 총 지급금액</span>
-                    <span id="summaryTotal" class="text-2xl font-bold text-amber-700 mt-1 block">₩0</span>
+                    <span data-i18n="sumTotalLabel" class="text-xs text-amber-800 font-semibold block">기간 내 총 지급금액</span>
+                    <span id="summaryTotal" class="text-2xl font-bold text-amber-700 mt-1 block">0 원</span>
                 </div>
             </div>
 
-            <!-- 내보내기 버튼 -->
-            <div class="flex flex-wrap justify-end gap-2 pt-2">
-                <button onclick="exportToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs md:text-sm px-3.5 py-2 rounded-lg font-medium shadow transition flex items-center">
-                    <i class="fa-solid fa-file-excel mr-1.5"></i> 엑셀(Excel) 다운로드
-                </button>
+            <!-- 내보내기 및 신규 등록 이동 버튼 -->
+            <div class="flex flex-wrap justify-between items-center gap-2 pt-2">
+                <div data-i18n="syncNotice" class="text-xs text-slate-500">
+                    * 실시간으로 고객이 입력한 매입 내역이 자동 동기화됩니다.
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="switchToCustomerMode()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs md:text-sm px-3.5 py-2 rounded-lg font-medium shadow transition flex items-center">
+                        <i class="fa-solid fa-plus mr-1.5"></i> <span data-i18n="btnGoNew">신규 등록으로 이동</span>
+                    </button>
+                    <button onclick="exportToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs md:text-sm px-3.5 py-2 rounded-lg font-medium shadow transition flex items-center">
+                        <i class="fa-solid fa-file-excel mr-1.5"></i> <span data-i18n="btnExcel">엑셀(Excel) 다운로드</span>
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -301,16 +350,16 @@
                     <thead>
                         <tr class="bg-slate-900 text-amber-400 font-semibold text-xs border-b border-amber-500/30">
                             <th class="p-3 text-center">No</th>
-                            <th class="p-3">매입일자</th>
-                            <th class="p-3">고객명/생년월일</th>
-                            <th class="p-3">연락처/주소</th>
-                            <th class="p-3">품목(수량)</th>
-                            <th class="p-3">순도</th>
-                            <th class="p-3 text-right">중량(g)</th>
-                            <th class="p-3 text-right">매입단가(원)</th>
-                            <th class="p-3 text-center">지급방법</th>
-                            <th class="p-3 text-center no-print">영수증/PDF</th>
-                            <th class="p-3 text-center no-print">관리</th>
+                            <th data-i18n="thDate" class="p-3">매입일자</th>
+                            <th data-i18n="thCustomer" class="p-3">고객명/생년월일</th>
+                            <th data-i18n="thContact" class="p-3">연락처/주소</th>
+                            <th data-i18n="thItem" class="p-3">품목(수량)</th>
+                            <th data-i18n="thPurity" class="p-3">순도</th>
+                            <th data-i18n="thWeight" class="p-3 text-right">중량(g)</th>
+                            <th data-i18n="thPrice" class="p-3 text-right">매입단가(원)</th>
+                            <th data-i18n="thPayment" class="p-3 text-center">지급방법</th>
+                            <th data-i18n="thReceipt" class="p-3 text-center no-print">영수증/PDF</th>
+                            <th data-i18n="thManage" class="p-3 text-center no-print">관리</th>
                         </tr>
                     </thead>
                     <tbody id="purchaseTableBody" class="divide-y divide-slate-100">
@@ -318,18 +367,35 @@
                     </tbody>
                 </table>
             </div>
-            <div id="emptyMessage" class="p-8 text-center text-slate-400 text-sm hidden">
+            <div id="emptyMessage" data-i18n="emptyMsg" class="p-8 text-center text-slate-400 text-sm hidden">
                 조회된 매입 내역이 없습니다.
             </div>
         </section>
     </main>
+
+    <!-- 고객 등록 완료 안내 모달 -->
+    <div id="submitSuccessModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h3 data-i18n="successTitle" class="text-xl font-bold text-slate-900">매입 등록이 완료되었습니다</h3>
+            <p data-i18n="successDesc" class="text-xs text-slate-600 leading-relaxed">
+                고객님의 고금 매입 정보가 정상적으로 접수되었습니다.<br>
+                담당 직원에게 말씀해 주시면 확인 후 정산을 도와드리겠습니다.
+            </p>
+            <button onclick="closeSuccessModal()" data-i18n="btnSuccessOk" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-3 rounded-xl transition text-sm">
+                확인 (새로 입력하기)
+            </button>
+        </div>
+    </div>
 
     <!-- 매입 정보 수정 모달 -->
     <div id="editModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 space-y-4 overflow-y-auto max-h-[90vh]">
             <div class="flex justify-between items-center border-b pb-3 border-slate-200">
                 <h3 class="font-bold text-slate-900 text-lg flex items-center">
-                    <i class="fa-solid fa-pen-to-square mr-2 text-amber-600"></i> 매입 정보 수정
+                    <i class="fa-solid fa-pen-to-square mr-2 text-amber-600"></i> <span data-i18n="editTitle">매입 정보 수정</span>
                 </h3>
                 <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 text-lg">
                     <i class="fa-solid fa-xmark"></i>
@@ -339,95 +405,95 @@
             <form id="editForm" onsubmit="handleEditFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs md:text-sm">
                 <input type="hidden" id="editId">
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">매입 일자 *</label>
+                    <label data-i18n="lblDate" class="block font-semibold text-slate-700 mb-1">매입 일자 *</label>
                     <input type="date" id="editDate" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">고객명 *</label>
+                    <label data-i18n="lblCustomerName" class="block font-semibold text-slate-700 mb-1">고객명 *</label>
                     <input type="text" id="editCustomerName" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">생년월일 *</label>
-                    <input type="text" id="editBirthdate" maxlength="8" placeholder="19880101 (8자리)" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                    <label data-i18n="lblBirthdate" class="block font-semibold text-slate-700 mb-1">생년월일 *</label>
+                    <input type="text" id="editBirthdate" maxlength="8" data-i18n-placeholder="phBirthdate" placeholder="19880101 (8자리)" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">연락처 *</label>
+                    <label data-i18n="lblContact" class="block font-semibold text-slate-700 mb-1">연락처 *</label>
                     <input type="tel" id="editContact" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
 
                 <div class="md:col-span-2 lg:col-span-4">
-                    <label class="block font-semibold text-slate-700 mb-1">고객 주소 *</label>
+                    <label data-i18n="lblAddress" class="block font-semibold text-slate-700 mb-1">고객 주소 *</label>
                     <input type="text" id="editAddress" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">품목 분류 *</label>
+                    <label data-i18n="lblCategory" class="block font-semibold text-slate-700 mb-1">품목 분류 *</label>
                     <select id="editItemCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
-                        <option value="반지">반지</option>
-                        <option value="목걸이">목걸이</option>
-                        <option value="팔찌">팔찌</option>
-                        <option value="골드바">골드바 / 덩어리</option>
-                        <option value="귀걸이">귀걸이</option>
-                        <option value="기타">기타 귀금속</option>
+                        <option value="반지" data-i18n="optRing">반지</option>
+                        <option value="목걸이" data-i18n="optNecklace">목걸이</option>
+                        <option value="팔찌" data-i18n="optBracelet">팔찌</option>
+                        <option value="골드바" data-i18n="optGoldbar">골드바 / 덩어리</option>
+                        <option value="귀걸이" data-i18n="optEarring">귀걸이</option>
+                        <option value="기타" data-i18n="optEtc">기타 귀금속</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">순도 *</label>
+                    <label data-i18n="lblPurity" class="block font-semibold text-slate-700 mb-1">순도 *</label>
                     <select id="editPurity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                         <option value="24K (99.9%)">24K (99.9%)</option>
                         <option value="18K (75.0%)">18K (75.0%)</option>
                         <option value="14K (58.5%)">14K (58.5%)</option>
-                        <option value="백금 (Pt)">백금 (Pt)</option>
-                        <option value="은 (Ag)">은 (Ag)</option>
-                        <option value="기타">기타</option>
+                        <option value="백금 (Pt)" data-i18n="optPlatinum">백금 (Pt)</option>
+                        <option value="은 (Ag)" data-i18n="optSilver">은 (Ag)</option>
+                        <option value="기타" data-i18n="optEtcPurity">기타</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">수량 *</label>
+                    <label data-i18n="lblQuantity" class="block font-semibold text-slate-700 mb-1">수량 *</label>
                     <input type="number" min="1" id="editQuantity" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">중량 (g) *</label>
+                    <label data-i18n="lblWeight" class="block font-semibold text-slate-700 mb-1">중량 (g) *</label>
                     <input type="number" step="0.01" id="editWeight" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">매입단가 (원) *</label>
+                    <label data-i18n="lblUnitPriceEdit" class="block font-semibold text-slate-700 mb-1">매입단가 (원) *</label>
                     <input type="number" id="editUnitPrice" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
 
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">지급방법 *</label>
+                    <label data-i18n="lblPaymentMethod" class="block font-semibold text-slate-700 mb-1">지급방법 *</label>
                     <select id="editPaymentMethod" onchange="toggleEditBankFields()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
-                        <option value="현금">현금</option>
-                        <option value="계좌이체">계좌이체</option>
+                        <option value="현금" data-i18n="optCash">현금</option>
+                        <option value="계좌이체" data-i18n="optTransfer">계좌이체</option>
                     </select>
                 </div>
 
                 <div id="editBankFields" class="md:col-span-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-2 hidden bg-amber-50/60 p-2.5 rounded-lg border border-amber-200">
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌은행</label>
+                        <label data-i18n="lblBankName" class="block text-[11px] font-semibold text-slate-700 mb-1">계좌은행</label>
                         <input type="text" id="editBankName" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">계좌번호</label>
+                        <label data-i18n="lblAccountNumber" class="block text-[11px] font-semibold text-slate-700 mb-1">계좌번호</label>
                         <input type="text" id="editAccountNumber" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">예금주명</label>
+                        <label data-i18n="lblAccountHolder" class="block text-[11px] font-semibold text-slate-700 mb-1">예금주명</label>
                         <input type="text" id="editAccountHolder" class="w-full px-2.5 py-1.5 border border-slate-300 rounded text-xs outline-none">
                     </div>
                 </div>
 
                 <div class="md:col-span-2 lg:col-span-4">
-                    <label class="block font-semibold text-slate-700 mb-1">비고 및 특이사항</label>
+                    <label data-i18n="lblNotes" class="block font-semibold text-slate-700 mb-1">비고 및 특이사항</label>
                     <input type="text" id="editNotes" class="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
 
                 <div class="md:col-span-2 lg:col-span-4 flex justify-end space-x-2 pt-2 border-t border-slate-200">
-                    <button type="button" onclick="closeEditModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-4 rounded-lg transition">취소</button>
+                    <button type="button" onclick="closeEditModal()" data-i18n="btnCancel" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-4 rounded-lg transition">취소</button>
                     <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-5 rounded-lg shadow transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-check"></i> 수정사항 저장
+                        <i class="fa-solid fa-check"></i> <span data-i18n="btnSaveEdit">수정사항 저장</span>
                     </button>
                 </div>
             </form>
@@ -440,55 +506,55 @@
             <!-- 영수증 본문 -->
             <div id="receiptPDFContent" class="p-6 bg-white border border-slate-300 rounded-lg text-slate-800 space-y-4 pdf-render-box">
                 <div class="text-center border-b border-slate-300 pb-4">
-                    <h2 class="text-2xl font-extrabold tracking-widest text-slate-900">고금 매입 확인서</h2>
-                    <p class="text-xs text-amber-700 font-semibold mt-1">항텅솜분 귀금속 매입 법정 확인 영수증</p>
+                    <h2 data-i18n="rcpTitle" class="text-2xl font-extrabold tracking-widest text-slate-900">고금 매입 확인서</h2>
+                    <p data-i18n="rcpSubTitle" class="text-xs text-amber-700 font-semibold mt-1">항텅솜분 귀금속 매입 법정 확인 영수증</p>
                 </div>
                 
                 <div class="flex justify-between text-xs text-slate-600">
-                    <span><strong>발행일자:</strong> <span id="rDate"></span></span>
-                    <span><strong>관리번호:</strong> <span id="rId"></span></span>
+                    <span><strong data-i18n="rcpIssueDate">발행일자:</strong> <span id="rDate"></span></span>
+                    <span><strong data-i18n="rcpManageNo">관리번호:</strong> <span id="rId"></span></span>
                 </div>
 
                 <table class="w-full text-xs border border-slate-300 border-collapse">
                     <tbody>
                         <tr class="bg-slate-50 border-b border-slate-300">
-                            <th class="p-2 border-r border-slate-300 text-left w-1/4">매도 고객명</th>
+                            <th data-i18n="rcpSeller" class="p-2 border-r border-slate-300 text-left w-1/4">매도 고객명</th>
                             <td class="p-2 border-r border-slate-300 font-semibold" id="rCustomer"></td>
-                            <th class="p-2 border-r border-slate-300 text-left w-1/4">생년월일</th>
+                            <th data-i18n="rcpBirth" class="p-2 border-r border-slate-300 text-left w-1/4">생년월일</th>
                             <td class="p-2" id="rBirth"></td>
                         </tr>
                         <tr class="border-b border-slate-300">
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">연락처</th>
+                            <th data-i18n="rcpContact" class="p-2 border-r border-slate-300 text-left bg-slate-50">연락처</th>
                             <td class="p-2 border-r border-slate-300" id="rContact"></td>
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">지급방법</th>
+                            <th data-i18n="rcpPayment" class="p-2 border-r border-slate-300 text-left bg-slate-50">지급방법</th>
                             <td class="p-2" id="rPayment"></td>
                         </tr>
                         <tr class="border-b border-slate-300">
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">주소</th>
+                            <th data-i18n="rcpAddress" class="p-2 border-r border-slate-300 text-left bg-slate-50">주소</th>
                             <td colspan="3" class="p-2" id="rAddress"></td>
                         </tr>
                         <tr id="rBankRow" class="border-b border-slate-300 hidden bg-amber-50/40">
-                            <th class="p-2 border-r border-slate-300 text-left">계좌정보</th>
+                            <th data-i18n="rcpBankInfo" class="p-2 border-r border-slate-300 text-left">계좌정보</th>
                             <td colspan="3" class="p-2" id="rBankInfo"></td>
                         </tr>
                         <tr class="border-b border-slate-300">
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">품목 / 수량</th>
+                            <th data-i18n="rcpItemQty" class="p-2 border-r border-slate-300 text-left bg-slate-50">품목 / 수량</th>
                             <td class="p-2 border-r border-slate-300" id="rItem"></td>
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">금 순도</th>
+                            <th data-i18n="rcpPurity" class="p-2 border-r border-slate-300 text-left bg-slate-50">금 순도</th>
                             <td class="p-2" id="rPurity"></td>
                         </tr>
                         <tr class="border-b border-slate-300">
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">실측 중량</th>
+                            <th data-i18n="rcpWeight" class="p-2 border-r border-slate-300 text-left bg-slate-50">실측 중량</th>
                             <td class="p-2 border-r border-slate-300 font-bold text-amber-900" id="rWeight"></td>
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">매입단가</th>
+                            <th data-i18n="rcpUnitPrice" class="p-2 border-r border-slate-300 text-left bg-slate-50">매입단가</th>
                             <td class="p-2" id="rUnitPrice"></td>
                         </tr>
                         <tr class="bg-amber-50/80 border-b border-slate-300">
-                            <th class="p-2 border-r border-slate-300 text-left text-amber-900 font-bold">총 지급금액</th>
+                            <th data-i18n="rcpTotalPrice" class="p-2 border-r border-slate-300 text-left text-amber-900 font-bold">총 지급금액</th>
                             <td colspan="3" class="p-2 text-lg font-bold text-amber-900" id="rTotalPrice"></td>
                         </tr>
                         <tr>
-                            <th class="p-2 border-r border-slate-300 text-left bg-slate-50">비고</th>
+                            <th data-i18n="rcpNotes" class="p-2 border-r border-slate-300 text-left bg-slate-50">비고</th>
                             <td colspan="3" class="p-2" id="rNotes"></td>
                         </tr>
                     </tbody>
@@ -496,24 +562,24 @@
 
                 <!-- 안내사항 -->
                 <div class="text-[11px] text-slate-600 space-y-1 bg-slate-50 p-3 rounded border border-slate-200">
-                    <p>1. 본 확인서는 귀금속(고금) 매입거래 계약이 적법하게 이루어졌음을 증명합니다.</p>
-                    <p>2. 매도인은 본 제품이 도난품이나 장물이 아니며 정당한 소유권자임을 서명합니다.</p>
-                    <p>3. 매도인의 주민등록번호(생년월일)과 휴대폰번호는 본인확인을 위한 자료이며, 신분증(여권, 외국인등록증 등)으로 매도인 본인을 확인합니다.</p>
+                    <p data-i18n="legalLine1">1. 본 확인서는 귀금속(고금) 매입거래 계약이 적법하게 이루어졌음을 증명합니다.</p>
+                    <p data-i18n="legalLine2">2. 매도인은 본 제품이 도난품이나 장물이 아니며 정당한 소유권자임을 서명합니다.</p>
+                    <p data-i18n="legalLine3">3. 매도인의 주민등록번호(생년월일)과 휴대폰번호는 본인확인을 위한 자료이며, 신분증(여권, 외국인등록증 등)으로 매도인 본인을 확인합니다.</p>
                 </div>
 
                 <!-- 서명 영역 -->
                 <div class="pt-6 flex justify-between items-end">
                     <div class="text-center w-1/2 flex flex-col items-center">
-                        <p class="text-xs text-slate-700 font-medium mb-1">매도인 (<span id="rSignCustomerName" class="font-bold">고객</span>)</p>
+                        <p class="text-xs text-slate-700 font-medium mb-1"><span data-i18n="rcpSignSeller">매도인</span> (<span id="rSignCustomerName" class="font-bold">고객</span>)</p>
                         <div class="h-16 w-36 border-b-2 border-slate-500 flex items-center justify-center relative">
                             <img id="rSignatureImage" src="" alt="서명" class="max-h-14 max-w-full object-contain hidden" />
-                            <span id="rSignPlaceholder" class="text-xs text-slate-400">(인 / 서명)</span>
+                            <span id="rSignPlaceholder" data-i18n="rcpSignStamp" class="text-xs text-slate-400">(인 / 서명)</span>
                         </div>
                     </div>
                     <div class="text-center w-1/2 flex flex-col items-center">
-                        <p class="text-xs text-slate-700 font-medium mb-1">매수인 (항텅솜분)</p>
+                        <p data-i18n="rcpSignBuyer" class="text-xs text-slate-700 font-medium mb-1">매수인 (항텅솜분)</p>
                         <div class="h-16 w-36 border-b-2 border-slate-500 flex items-center justify-center">
-                            <span class="text-xs text-slate-400">(직인 생략)</span>
+                            <span data-i18n="rcpSealOmitted" class="text-xs text-slate-400">(직인 생략)</span>
                         </div>
                     </div>
                 </div>
@@ -521,9 +587,9 @@
 
             <!-- 버튼 영역 -->
             <div class="flex justify-end space-x-2 no-print">
-                <button onclick="closeReceiptModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium">닫기</button>
+                <button onclick="closeReceiptModal()" data-i18n="btnClose" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-4 py-2 rounded-lg font-medium">닫기</button>
                 <button onclick="downloadSinglePDF()" class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-xs px-4 py-2 rounded-lg font-medium shadow flex items-center gap-1">
-                    <i class="fa-solid fa-download"></i> 건별 PDF 저장
+                    <i class="fa-solid fa-download"></i> <span data-i18n="btnSavePDF">건별 PDF 저장</span>
                 </button>
             </div>
         </div>
@@ -533,16 +599,348 @@
     <script>
         const INITIAL_ADMIN_PW = "jimmy0309!";
 
+        // 다국어 사전 (한국어 / 태국어 - 화폐단위 '원'은 태국어 발음 'วอน'으로 표기)
+        const translations = {
+            ko: {
+                pageTitle: "고금 매입 관리 대장",
+                headerTitle: "항텅솜분 고금매입대장",
+                modeCustomer: "고객 입력 모드",
+                modeAdmin: "관리자 내역 조회 모드",
+                btnAdminMode: "관리자 모드",
+                btnCustomerView: "고객 입력 화면",
+                btnLogout: "로그아웃",
+                formTitle: "신규 고금 매입 등록 (고객입력용)",
+                formSubTitle: "* 매도인 인적사항 및 매입 정보 기재",
+                lblDate: "매입 일자 *",
+                lblCustomerName: "고객명 *",
+                phCustomerName: "홍길동",
+                lblBirthdate: "생년월일 *",
+                phBirthdate: "19880101 (8자리)",
+                lblContact: "연락처 *",
+                phContact: "010-0000-0000",
+                lblAddress: "고객 주소 *",
+                phAddress: "서울특별시 동작구 신대방동...",
+                lblCategory: "품목 분류 *",
+                optRing: "반지",
+                optNecklace: "목걸이",
+                optBracelet: "팔찌",
+                optGoldbar: "골드바 / 덩어리",
+                optEarring: "귀걸이",
+                optEtc: "기타 귀금속",
+                lblPurity: "순도 *",
+                optPlatinum: "백금 (Pt)",
+                optSilver: "은 (Ag)",
+                optEtcPurity: "기타",
+                lblQuantity: "수량 *",
+                lblWeight: "중량 (g) *",
+                lblUnitPrice: "매입단가/총지급액 (원) *",
+                lblUnitPriceEdit: "매입단가 (원) *",
+                lblPaymentMethod: "지급방법 *",
+                optCash: "현금",
+                optTransfer: "계좌이체",
+                lblBankName: "계좌은행",
+                phBankName: "KB국민",
+                lblAccountNumber: "계좌번호",
+                lblAccountHolder: "예금주명",
+                lblNotes: "비고 및 특이사항",
+                phNotes: "기스 있음, 보증서 있음 등",
+                legalTitle: "귀금속 매입 법정 확인 안내",
+                legalLine1: "1. 본 확인서는 귀금속(고금) 매입거래 계약이 적법하게 이루어졌음을 증명합니다.",
+                legalLine2: "2. 매도인은 본 제품이 도난품이나 장물이 아니며 정당한 소유권자임을 서명합니다.",
+                legalLine3: "3. 매도인의 주민등록번호(생년월일)과 휴대폰번호는 본인확인을 위한 자료이며, 신분증(여권, 외국인등록증 등)으로 매도인 본인을 확인합니다.",
+                lblSignature: "고객(매도인) 전자 서명 *",
+                btnClearSign: "서명 지우기",
+                signGuide: "여기에 터치 또는 마우스로 서명해 주세요",
+                btnSubmit: "매입 정보 등록 완료",
+                loginTitle: "항텅솜분 관리자 인증",
+                loginDesc: "전체 고금 매입 내역 조회를 위해 비밀번호를 입력하세요.",
+                lblPassword: "관리자 비밀번호",
+                phPassword: "비밀번호 입력",
+                loginError: "비밀번호가 일치하지 않습니다.",
+                btnCancel: "취소",
+                btnAdminConnect: "관리자 접속",
+                adminSearchTitle: "기간별 매입 내역 조회 & 통계",
+                btnToday: "오늘",
+                btnMonth: "이번 달",
+                btnPrevMonth: "전월",
+                btnYear: "올해",
+                btnAll: "전체",
+                sumCountLabel: "기간 내 총 매입 건수",
+                sumWeightLabel: "기간 내 총 중량",
+                sumTotalLabel: "기간 내 총 지급금액",
+                syncNotice: "* 실시간으로 고객이 입력한 매입 내역이 자동 동기화됩니다.",
+                btnGoNew: "신규 등록으로 이동",
+                btnExcel: "엑셀(Excel) 다운로드",
+                thDate: "매입일자",
+                thCustomer: "고객명/생년월일",
+                thContact: "연락처/주소",
+                thItem: "품목(수량)",
+                thPurity: "순도",
+                thWeight: "중량(g)",
+                thPrice: "매입단가(원)",
+                thPayment: "지급방법",
+                thReceipt: "영수증/PDF",
+                thManage: "관리",
+                emptyMsg: "조회된 매입 내역이 없습니다.",
+                successTitle: "매입 등록이 완료되었습니다",
+                successDesc: "고객님의 고금 매입 정보가 정상적으로 접수되었습니다.<br>담당 직원에게 말씀해 주시면 확인 후 정산을 도와드리겠습니다.",
+                btnSuccessOk: "확인 (새로 입력하기)",
+                editTitle: "매입 정보 수정",
+                btnSaveEdit: "수정사항 저장",
+                rcpTitle: "고금 매입 확인서",
+                rcpSubTitle: "항텅솜분 귀금속 매입 법정 확인 영수증",
+                rcpIssueDate: "발행일자:",
+                rcpManageNo: "관리번호:",
+                rcpSeller: "매도 고객명",
+                rcpBirth: "생년월일",
+                rcpContact: "연락처",
+                rcpPayment: "지급방법",
+                rcpAddress: "주소",
+                rcpBankInfo: "계좌정보",
+                rcpItemQty: "품목 / 수량",
+                rcpPurity: "금 순도",
+                rcpWeight: "실측 중량",
+                rcpUnitPrice: "매입단가",
+                rcpTotalPrice: "총 지급금액",
+                rcpNotes: "비고",
+                rcpSignSeller: "매도인",
+                rcpSignStamp: "(인 / 서명)",
+                rcpSignBuyer: "매수인 (항텅솜분)",
+                rcpSealOmitted: "(직인 생략)",
+                btnClose: "닫기",
+                btnSavePDF: "건별 PDF 저장",
+                // 동적 텍스트 및 알림창
+                currencyUnit: "원",
+                countUnit: "건",
+                qtyUnit: "개",
+                signedBadge: "서명완료",
+                btnReceipt: "영수증",
+                btnEdit: "수정",
+                btnDelete: "삭제",
+                holderPrefix: "예금주",
+                alertSignRequired: "고객(매도인) 전자 서명을 진행해 주세요.",
+                alertSaveError: "저장 중 오류가 발생했습니다. 네트워크 상태를 확인해 주세요.",
+                confirmDelete: "해당 매입건을 데이터베이스에서 삭제하시겠습니까?",
+                alertDeleteError: "삭제 중 오류가 발생했습니다.",
+                alertEditSuccess: "수정사항이 반영되었습니다.",
+                alertEditError: "수정 저장 중 오류가 발생했습니다.",
+                pdfFilenamePrefix: "고금매입확인서",
+                excelFilenamePrefix: "고금매입대장",
+                excelSheetName: "고금매입대장"
+            },
+            th: {
+                pageTitle: "ทะเบียนรับซื้อทองเก่า",
+                headerTitle: "ทะเบียนรับซื้อทองเก่า ห้างทองสมบูรณ์",
+                modeCustomer: "โหมดลูกค้ากรอกข้อมูล",
+                modeAdmin: "โหมดผู้ดูแลระบบ",
+                btnAdminMode: "โหมดผู้ดูแล",
+                btnCustomerView: "หน้าลูกค้ากรอกข้อมูล",
+                btnLogout: "ออกจากระบบ",
+                formTitle: "ลงทะเบียนรับซื้อทองเก่าใหม่ (สำหรับลูกค้า)",
+                formSubTitle: "* กรุณากรอกข้อมูลผู้ขายและรายละเอียดการรับซื้อ",
+                lblDate: "วันที่รับซื้อ *",
+                lblCustomerName: "ชื่อลูกค้า *",
+                phCustomerName: "สมชาย ใจดี",
+                lblBirthdate: "วันเดือนปีเกิด *",
+                phBirthdate: "19880101 (8 หลัก)",
+                lblContact: "เบอร์ติดต่อ *",
+                phContact: "010-0000-0000",
+                lblAddress: "ที่อยู่ลูกค้า *",
+                phAddress: "กรอกที่อยู่ปัจจุบัน...",
+                lblCategory: "ประเภทสินค้า *",
+                optRing: "แหวน",
+                optNecklace: "สร้อยคอ",
+                optBracelet: "สร้อยข้อมือ",
+                optGoldbar: "ทองคำแท่ง / ทองก้อน",
+                optEarring: "ต่างหู",
+                optEtc: "เครื่องประดับอื่นๆ",
+                lblPurity: "เปอร์เซ็นต์ทอง *",
+                optPlatinum: "แพลทินัม (Pt)",
+                optSilver: "เงิน (Ag)",
+                optEtcPurity: "อื่นๆ",
+                lblQuantity: "จำนวน *",
+                lblWeight: "น้ำหนัก (g) *",
+                lblUnitPrice: "ราคารับซื้อ/ยอดชำระรวม (วอน) *",
+                lblUnitPriceEdit: "ราคารับซื้อ (วอน) *",
+                lblPaymentMethod: "วิธีการชำระเงิน *",
+                optCash: "เงินสด",
+                optTransfer: "โอนเงินผ่านบัญชี",
+                lblBankName: "ชื่อธนาคาร",
+                phBankName: "กสิกรไทย / กรุงไทย",
+                lblAccountNumber: "เลขที่บัญชี",
+                lblAccountHolder: "ชื่อเจ้าของบัญชี",
+                lblNotes: "หมายเหตุและรายละเอียดเพิ่มเติม",
+                phNotes: "มีรอยขีดข่วน, มีใบรับประกัน ฯลฯ",
+                legalTitle: "ข้อตกลงและคำรับรองตามกฎหมายการรับซื้อโลหะมีค่า",
+                legalLine1: "1. หนังสือรับรองฉบับนี้เป็นหลักฐานยืนยันว่าสัญญาซื้อขายโลหะมีค่า (ทองเก่า) ได้ดำเนินการอย่างถูกต้องตามกฎหมาย",
+                legalLine2: "2. ผู้ขายขอลงนามรับรองว่าสินค้าชิ้นนี้ไม่ใช่ทรัพย์สินที่ถูกโจรกรรมหรือของโจร และตนเป็นเจ้าของกรรมสิทธิ์โดยชอบธรรม",
+                legalLine3: "3. เลขประจำตัวประชาชน (วันเดือนปีเกิด) และเบอร์โทรศัพท์มือถือของผู้ขายเป็นข้อมูลเพื่อการยืนยันตัวตน และได้ตรวจสอบตัวตนผู้ขายด้วยบัตรประจำตัว (หนังสือเดินทาง บัตรประจำตัวคนต่างด้าว ฯลฯ) แล้ว",
+                lblSignature: "ลายเซ็นอิเล็กทรอนิกส์ลูกค้า (ผู้ขาย) *",
+                btnClearSign: "ล้างลายเซ็น",
+                signGuide: "กรุณาเซ็นชื่อที่นี่ด้วยนิ้วหรือเมาส์",
+                btnSubmit: "บันทึกข้อมูลการรับซื้อเสร็จสิ้น",
+                loginTitle: "ยืนยันตัวตนผู้ดูแลระบบ ห้างทองสมบูรณ์",
+                loginDesc: "กรุณากรอกรหัสผ่านเพื่อเข้าดูประวัติการรับซื้อทองเก่าทั้งหมด",
+                lblPassword: "รหัสผ่านผู้ดูแลระบบ",
+                phPassword: "กรอกรหัสผ่าน",
+                loginError: "รหัสผ่านไม่ถูกต้อง",
+                btnCancel: "ยกเลิก",
+                btnAdminConnect: "เข้าสู่ระบบผู้ดูแล",
+                adminSearchTitle: "ค้นหาประวัติการรับซื้อตามช่วงเวลา & สถิติ",
+                btnToday: "วันนี้",
+                btnMonth: "เดือนนี้",
+                btnPrevMonth: "เดือนที่แล้ว",
+                btnYear: "ปีนี้",
+                btnAll: "ทั้งหมด",
+                sumCountLabel: "จำนวนรายการรับซื้อทั้งหมดในช่วงเวลา",
+                sumWeightLabel: "น้ำหนักรวมทั้งหมดในช่วงเวลา",
+                sumTotalLabel: "ยอดเงินที่ชำระรวมทั้งหมดในช่วงเวลา (วอน)",
+                syncNotice: "* ข้อมูลที่ลูกค้ากรอกจะซิงค์เข้าระบบโดยอัตโนมัติแบบเรียลไทม์",
+                btnGoNew: "ไปหน้าลงทะเบียนใหม่",
+                btnExcel: "ดาวน์โหลด Excel",
+                thDate: "วันที่รับซื้อ",
+                thCustomer: "ชื่อลูกค้า/วันเกิด",
+                thContact: "เบอร์ติดต่อ/ที่อยู่",
+                thItem: "สินค้า(จำนวน)",
+                thPurity: "เปอร์เซ็นต์",
+                thWeight: "น้ำหนัก(g)",
+                thPrice: "ราคารับซื้อ(วอน)",
+                thPayment: "วิธีชำระเงิน",
+                thReceipt: "ใบเสร็จ/PDF",
+                thManage: "จัดการ",
+                emptyMsg: "ไม่พบประวัติการรับซื้อที่ค้นหา",
+                successTitle: "ลงทะเบียนการรับซื้อเสร็จสมบูรณ์",
+                successDesc: "ระบบได้รับข้อมูลการรับซื้อทองเก่าของท่านเรียบร้อยแล้ว<br>กรุณาแจ้งพนักงานเพื่อตรวจสอบและดำเนินการชำระเงิน",
+                btnSuccessOk: "ตกลง (กรอกรายการใหม่)",
+                editTitle: "แก้ไขข้อมูลการรับซื้อ",
+                btnSaveEdit: "บันทึกการแก้ไข",
+                rcpTitle: "หนังสือรับรองการรับซื้อทองเก่า",
+                rcpSubTitle: "ใบเสร็จรับรองตามกฎหมายการรับซื้อโลหะมีค่า ห้างทองสมบูรณ์",
+                rcpIssueDate: "วันที่ออกเอกสาร:",
+                rcpManageNo: "เลขที่อ้างอิง:",
+                rcpSeller: "ชื่อลูกค้า (ผู้ขาย)",
+                rcpBirth: "วันเดือนปีเกิด",
+                rcpContact: "เบอร์ติดต่อ",
+                rcpPayment: "วิธีการชำระเงิน",
+                rcpAddress: "ที่อยู่",
+                rcpBankInfo: "ข้อมูลบัญชีธนาคาร",
+                rcpItemQty: "สินค้า / จำนวน",
+                rcpPurity: "เปอร์เซ็นต์ทอง",
+                rcpWeight: "น้ำหนักที่ชั่งจริง",
+                rcpUnitPrice: "ราคารับซื้อ",
+                rcpTotalPrice: "ยอดเงินที่ชำระรวม",
+                rcpNotes: "หมายเหตุ",
+                rcpSignSeller: "ผู้ขาย",
+                rcpSignStamp: "(ประทับตรา / ลายเซ็น)",
+                rcpSignBuyer: "ผู้ซื้อ (ห้างทองสมบูรณ์)",
+                rcpSealOmitted: "(งดประทับตรา)",
+                btnClose: "ปิด",
+                btnSavePDF: "บันทึก PDF รายฉบับ",
+                // 동적 텍스트 및 알림창
+                currencyUnit: "วอน",
+                countUnit: "รายการ",
+                qtyUnit: "ชิ้น",
+                signedBadge: "เซ็นชื่อแล้ว",
+                btnReceipt: "ใบเสร็จ",
+                btnEdit: "แก้ไข",
+                btnDelete: "ลบ",
+                holderPrefix: "ชื่อบัญชี",
+                alertSignRequired: "กรุณาลงลายเซ็นอิเล็กทรอนิกส์ของลูกค้า (ผู้ขาย)",
+                alertSaveError: "เกิดข้อผิดพลาดในการบันทึก กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต",
+                confirmDelete: "คุณต้องการลบรายการรับซื้อนี้ออกจากฐานข้อมูลหรือไม่?",
+                alertDeleteError: "เกิดข้อผิดพลาดในการลบข้อมูล",
+                alertEditSuccess: "บันทึกการแก้ไขเรียบร้อยแล้ว",
+                alertEditError: "เกิดข้อผิดพลาดในการบันทึกการแก้ไข",
+                pdfFilenamePrefix: "ใบรับรองรับซื้อทองเก่า",
+                excelFilenamePrefix: "ทะเบียนรับซื้อทองเก่า",
+                excelSheetName: "ทะเบียนรับซื้อทองเก่า"
+            }
+        };
+
+        // 저장된 값(한국어)을 선택된 언어 화면 표시용으로 변환하는 매핑
+        const valueLabelMap = {
+            "반지": { ko: "반지", th: "แหวน" },
+            "목걸이": { ko: "목걸이", th: "สร้อยคอ" },
+            "팔찌": { ko: "팔찌", th: "สร้อยข้อมือ" },
+            "골드바": { ko: "골드바", th: "ทองคำแท่ง" },
+            "귀걸이": { ko: "귀걸이", th: "ต่างหู" },
+            "기타": { ko: "기타", th: "อื่นๆ" },
+            "백금 (Pt)": { ko: "백금 (Pt)", th: "แพลทินัม (Pt)" },
+            "은 (Ag)": { ko: "은 (Ag)", th: "เงิน (Ag)" },
+            "현금": { ko: "현금", th: "เงินสด" },
+            "계좌이체": { ko: "계좌이체", th: "โอนเงินผ่านบัญชี" }
+        };
+
+        function translateValue(val) {
+            if (valueLabelMap[val]) {
+                return valueLabelMap[val][currentLang] || val;
+            }
+            return val;
+        }
+
+        function t(key) {
+            return (translations[currentLang] && translations[currentLang][key]) || translations['ko'][key] || key;
+        }
+
         // 전역 상태 변수
+        let currentLang = 'ko';
         let purchaseData = [];
         let filteredData = [];
         let currentReceiptItem = null;
+        let isAdminAuthenticated = false;
+        let isFirebaseListening = false;
 
         // 서명 패드 상태 변수
         let isFormDrawing = false;
         let hasFormSignature = false;
         let formCanvas = null;
         let formCtx = null;
+
+        // 언어 변경 및 전체 UI 번역 적용
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.title = t('pageTitle');
+
+            // 언어 버튼 스타일 토글
+            const btnKo = document.getElementById('langBtnKo');
+            const btnTh = document.getElementById('langBtnTh');
+            if (lang === 'ko') {
+                btnKo.className = "px-2.5 py-1 rounded-md font-bold bg-amber-500 text-slate-950 transition";
+                btnTh.className = "px-2.5 py-1 rounded-md font-bold text-slate-300 hover:text-white transition";
+            } else {
+                btnTh.className = "px-2.5 py-1 rounded-md font-bold bg-amber-500 text-slate-950 transition";
+                btnKo.className = "px-2.5 py-1 rounded-md font-bold text-slate-300 hover:text-white transition";
+            }
+
+            // data-i18n 속성을 가진 모든 정적 텍스트 일괄 번역
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (key === 'successDesc') {
+                    el.innerHTML = t(key);
+                } else {
+                    el.innerText = t(key);
+                }
+            });
+
+            // data-i18n-placeholder 일괄 번역
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.placeholder = t(key);
+            });
+
+            // 현재 모드 배지 텍스트 동기화
+            const badge = document.getElementById('modeBadge');
+            const isAdminVisible = !document.getElementById('adminSection').classList.contains('hidden');
+            badge.innerText = isAdminVisible ? t('modeAdmin') : t('modeCustomer');
+
+            // 동적 테이블 및 통계, 열려있는 영수증 모달 재렌더링
+            renderTable();
+            updateSummary();
+            if (currentReceiptItem && !document.getElementById('receiptModal').classList.contains('hidden')) {
+                openReceiptModal(currentReceiptItem.id);
+            }
+        }
 
         // 생년월일 포맷팅 헬퍼 (8자리 YYYYMMDD -> YYYY.MM.DD)
         function formatBirthdate(raw) {
@@ -558,20 +956,94 @@
             document.getElementById('date').value = new Date().toISOString().substring(0, 10);
             setQuickDate('all');
             setupFormSignatureCanvas();
+            setLanguage('ko');
         };
 
-        // 매입 등록 폼 내부 서명 패드 초기화 및 터치/마우스 이벤트 설정 (좌표 오차 완벽 해결)
+        // 고객용 입력 화면으로 전환
+        function switchToCustomerMode() {
+            document.getElementById('customerSection').classList.remove('hidden');
+            document.getElementById('adminSection').classList.add('hidden');
+            
+            const badge = document.getElementById('modeBadge');
+            badge.innerText = t('modeCustomer');
+            badge.className = 'text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-medium';
+
+            if (isAdminAuthenticated) {
+                document.getElementById('btnAdminLoginModal').classList.add('hidden');
+                document.getElementById('adminHeaderControls').classList.remove('hidden');
+            } else {
+                document.getElementById('btnAdminLoginModal').classList.remove('hidden');
+                document.getElementById('adminHeaderControls').classList.add('hidden');
+            }
+
+            // 캔버스 리사이즈 재확인
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        }
+
+        // 관리자용 내역 조회 화면으로 전환
+        function switchToAdminMode() {
+            document.getElementById('customerSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.remove('hidden');
+            
+            const badge = document.getElementById('modeBadge');
+            badge.innerText = t('modeAdmin');
+            badge.className = 'text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-medium';
+
+            document.getElementById('btnAdminLoginModal').classList.add('hidden');
+            document.getElementById('adminHeaderControls').classList.remove('hidden');
+
+            initFirebaseListener();
+        }
+
+        // 관리자 로그인 모달 열기/닫기
+        function openLoginModal() {
+            if (isAdminAuthenticated) {
+                switchToAdminMode();
+                return;
+            }
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('loginPassword').focus(), 100);
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        // 로그인 처리
+        function handleLogin(e) {
+            e.preventDefault();
+            const pw = document.getElementById('loginPassword').value;
+            if (pw === INITIAL_ADMIN_PW) {
+                isAdminAuthenticated = true;
+                closeLoginModal();
+                switchToAdminMode();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        // 로그아웃 처리 (고객 모드로 복귀)
+        function handleLogout() {
+            isAdminAuthenticated = false;
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+            switchToCustomerMode();
+        }
+
+        // 매입 등록 폼 내부 서명 패드 초기화 및 터치/마우스 이벤트 설정
         function setupFormSignatureCanvas() {
             formCanvas = document.getElementById('formSignatureCanvas');
             if (!formCanvas) return;
             formCtx = formCanvas.getContext('2d');
 
-            // 캔버스 실제 픽셀 크기를 화면 표시 크기와 1:1로 일치시키는 함수
             function resizeFormCanvas() {
                 const rect = formCanvas.getBoundingClientRect();
                 if (rect.width === 0 || rect.height === 0) return;
                 
-                // 기존 서명 내용 임시 저장 (크기 재조정 시 백화 현상 방지)
                 let tempImgData = null;
                 if (hasFormSignature) {
                     tempImgData = formCanvas.toDataURL();
@@ -597,7 +1069,6 @@
             setTimeout(resizeFormCanvas, 150);
             window.addEventListener('resize', resizeFormCanvas);
 
-            // 포인터/터치 위치와 캔버스 그려지는 위치를 정확히 1:1 매칭시키는 좌표 함수
             function getPos(e) {
                 const rect = formCanvas.getBoundingClientRect();
                 let clientX, clientY;
@@ -610,7 +1081,6 @@
                     clientY = e.clientY;
                 }
 
-                // 캔버스 화면 크기와 내부 픽셀간의 비율 계산 (좌표 밀림 오차 보정)
                 const scaleX = formCanvas.width / rect.width;
                 const scaleY = formCanvas.height / rect.height;
                 
@@ -621,7 +1091,6 @@
             }
 
             function startDraw(e) {
-                // 서명 시작 시 크기를 다시 1:1 맞춤 검증하여 오차 제거
                 const rect = formCanvas.getBoundingClientRect();
                 if (formCanvas.width !== rect.width || formCanvas.height !== rect.height) {
                     resizeFormCanvas();
@@ -671,9 +1140,11 @@
             if (guide) guide.classList.remove('hidden');
         }
 
-        // Firebase 실시간 리스너 연결
+        // Firebase 실시간 리스너 연결 (중복 등록 방지)
         function initFirebaseListener() {
-            if (!window.window.fbSDK) return;
+            if (isFirebaseListening || !window.fbSDK) return;
+            isFirebaseListening = true;
+
             const { onSnapshot, query, orderBy } = window.fbSDK;
             const q = query(window.purchasesCol, orderBy("createdAt", "desc"));
 
@@ -685,32 +1156,8 @@
                 filterData();
             }, (error) => {
                 console.error("Firebase 데이터 읽기 오류:", error);
+                isFirebaseListening = false;
             });
-        }
-
-        // 로그인 처리
-        function handleLogin(e) {
-            e.preventDefault();
-            const pw = document.getElementById('loginPassword').value;
-            if (pw === INITIAL_ADMIN_PW) {
-                document.getElementById('loginPage').classList.add('hidden');
-                document.getElementById('mainContent').classList.remove('hidden');
-                document.getElementById('headerAuthArea').classList.remove('hidden');
-                
-                // Firebase 실시간 동기화 시작
-                initFirebaseListener();
-            } else {
-                document.getElementById('loginError').classList.remove('hidden');
-            }
-        }
-
-        // 로그아웃 처리
-        function handleLogout() {
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('loginError').classList.add('hidden');
-            document.getElementById('mainContent').classList.add('hidden');
-            document.getElementById('headerAuthArea').classList.add('hidden');
-            document.getElementById('loginPage').classList.remove('hidden');
         }
 
         // 계좌이체 관련 항목 토글
@@ -735,9 +1182,14 @@
             }
         }
 
-        // 신규 매입 등록 (Firebase DB 저장)
+        // 신규 매입 등록 (고객용 폼 -> Firebase DB 저장)
         async function handleFormSubmit(e) {
             e.preventDefault();
+
+            if (!hasFormSignature) {
+                alert(t('alertSignRequired'));
+                return;
+            }
 
             const weight = parseFloat(document.getElementById('weight').value) || 0;
             const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
@@ -745,7 +1197,6 @@
             const paymentMethod = document.getElementById('paymentMethod').value;
             const rawBirth = document.getElementById('birthdate').value;
 
-            // 서명 Base64 이미지 데이터 생성 (서명이 있을 경우)
             const signatureData = hasFormSignature ? formCanvas.toDataURL('image/png') : '';
 
             const newEntry = {
@@ -759,13 +1210,13 @@
                 quantity: quantity,
                 weight: weight,
                 unitPrice: unitPrice,
-                totalPrice: unitPrice, // 별도 곱셈 없이 입력한 가격 그대로 총지급액에 반영
+                totalPrice: unitPrice,
                 paymentMethod: paymentMethod,
                 bankName: paymentMethod === '계좌이체' ? document.getElementById('bankName').value : '',
                 accountNumber: paymentMethod === '계좌이체' ? document.getElementById('accountNumber').value : '',
                 accountHolder: paymentMethod === '계좌이체' ? document.getElementById('accountHolder').value : '',
                 notes: document.getElementById('notes').value || '-',
-                signature: signatureData, // 서명 데이터 보관
+                signature: signatureData,
                 createdAt: new Date().toISOString()
             };
 
@@ -783,11 +1234,18 @@
                 document.getElementById('quantity').value = 1;
                 clearFormSignatureCanvas();
                 toggleBankFields();
-                alert("Firebase 데이터베이스에 매입 등록이 완료되었습니다.");
+
+                // 고객 친화적 완료 모달 표시
+                document.getElementById('submitSuccessModal').classList.remove('hidden');
             } catch (err) {
                 console.error("Firebase 저장 오류:", err);
-                alert("저장 중 오류가 발생했습니다.");
+                alert(t('alertSaveError'));
             }
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('submitSuccessModal').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         // 빠른 날짜 필터
@@ -850,9 +1308,9 @@
             const totalWeight = filteredData.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
             const totalPrice = filteredData.reduce((sum, item) => sum + (parseFloat(item.unitPrice || item.totalPrice) || 0), 0);
 
-            document.getElementById('summaryCount').innerText = `${count.toLocaleString()} 건`;
+            document.getElementById('summaryCount').innerText = `${count.toLocaleString()} ${t('countUnit')}`;
             document.getElementById('summaryWeight').innerText = `${totalWeight.toFixed(2)} g`;
-            document.getElementById('summaryTotal').innerText = `₩${totalPrice.toLocaleString()}`;
+            document.getElementById('summaryTotal').innerText = `${totalPrice.toLocaleString()} ${t('currencyUnit')}`;
         }
 
         // 대장 테이블 렌더링
@@ -877,7 +1335,7 @@
                     : '';
 
                 const signTag = item.signature 
-                    ? `<span class="ml-1 px-1.5 py-0.5 text-[10px] bg-emerald-100 text-emerald-800 rounded font-bold">서명완료</span>`
+                    ? `<span class="ml-1 px-1.5 py-0.5 text-[10px] bg-emerald-100 text-emerald-800 rounded font-bold">${t('signedBadge')}</span>`
                     : '';
 
                 tr.innerHTML = `
@@ -892,31 +1350,31 @@
                         <div class="text-[11px] text-slate-400 truncate max-w-[150px]" title="${item.address}">${item.address}</div>
                     </td>
                     <td class="p-3">
-                        <span class="font-medium text-slate-800">${item.itemCategory}</span>
-                        <span class="text-xs text-slate-500">(${item.quantity || 1}개)</span>
+                        <span class="font-medium text-slate-800">${translateValue(item.itemCategory)}</span>
+                        <span class="text-xs text-slate-500">(${item.quantity || 1}${t('qtyUnit')})</span>
                     </td>
                     <td class="p-3">
-                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">${item.purity}</span>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">${translateValue(item.purity)}</span>
                     </td>
                     <td class="p-3 text-right font-bold text-slate-800">${parseFloat(item.weight).toFixed(2)} g</td>
                     <td class="p-3 text-right">
-                        <div class="font-bold text-amber-700">₩${Number(item.unitPrice).toLocaleString()}</div>
+                        <div class="font-bold text-amber-700">${Number(item.unitPrice).toLocaleString()} ${t('currencyUnit')}</div>
                     </td>
                     <td class="p-3 text-center">
-                        <span class="px-2 py-0.5 rounded text-[11px] font-medium ${item.paymentMethod === '계좌이체' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${item.paymentMethod}</span>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-medium ${item.paymentMethod === '계좌이체' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">${translateValue(item.paymentMethod)}</span>
                         ${bankDetail}
                     </td>
                     <td class="p-3 text-center no-print whitespace-nowrap">
                         <button onclick="openReceiptModal('${item.id}')" class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded shadow-sm transition">
-                            <i class="fa-solid fa-receipt mr-1"></i> 영수증
+                            <i class="fa-solid fa-receipt mr-1"></i> ${t('btnReceipt')}
                         </button>
                     </td>
                     <td class="p-3 text-center no-print whitespace-nowrap space-x-1">
                         <button onclick="openEditModal('${item.id}')" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs px-2 py-1 rounded transition">
-                            수정
+                            ${t('btnEdit')}
                         </button>
                         <button onclick="deleteItem('${item.id}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs px-2 py-1 rounded transition">
-                            삭제
+                            ${t('btnDelete')}
                         </button>
                     </td>
                 `;
@@ -926,7 +1384,7 @@
 
         // 매입 정보 삭제
         async function deleteItem(id) {
-            if (confirm("해당 매입건을 데이터베이스에서 삭제하시겠습니까?")) {
+            if (confirm(t('confirmDelete'))) {
                 try {
                     if (window.fbSDK && window.db) {
                         const targetRef = window.fbSDK.doc(window.db, "purchases", id);
@@ -937,7 +1395,7 @@
                     }
                 } catch (err) {
                     console.error("Firebase 삭제 오류:", err);
-                    alert("삭제 중 오류가 발생했습니다.");
+                    alert(t('alertDeleteError'));
                 }
             }
         }
@@ -1013,10 +1471,10 @@
                     }
                 }
                 closeEditModal();
-                alert("수정사항이 반영되었습니다.");
+                alert(t('alertEditSuccess'));
             } catch (err) {
                 console.error("Firebase 수정 오류:", err);
-                alert("수정 저장 중 오류가 발생했습니다.");
+                alert(t('alertEditError'));
             }
         }
 
@@ -1036,15 +1494,14 @@
             document.getElementById('rBirth').innerText = item.birthdate || '-';
             document.getElementById('rContact').innerText = item.contact;
             document.getElementById('rAddress').innerText = item.address;
-            document.getElementById('rItem').innerText = `${item.itemCategory} (${item.quantity || 1}개)`;
-            document.getElementById('rPurity').innerText = item.purity;
+            document.getElementById('rItem').innerText = `${translateValue(item.itemCategory)} (${item.quantity || 1}${t('qtyUnit')})`;
+            document.getElementById('rPurity').innerText = translateValue(item.purity);
             document.getElementById('rWeight').innerText = `${parseFloat(item.weight).toFixed(2)} g`;
-            document.getElementById('rUnitPrice').innerText = `₩${finalPrice.toLocaleString()}`;
-            document.getElementById('rTotalPrice').innerText = `₩${finalPrice.toLocaleString()}`;
-            document.getElementById('rPayment').innerText = item.paymentMethod;
+            document.getElementById('rUnitPrice').innerText = `${finalPrice.toLocaleString()} ${t('currencyUnit')}`;
+            document.getElementById('rTotalPrice').innerText = `${finalPrice.toLocaleString()} ${t('currencyUnit')}`;
+            document.getElementById('rPayment').innerText = translateValue(item.paymentMethod);
             document.getElementById('rNotes').innerText = item.notes;
 
-            // 서명 이미지 영수증에 자동 반영
             const signImg = document.getElementById('rSignatureImage');
             const signPlaceholder = document.getElementById('rSignPlaceholder');
             if (item.signature) {
@@ -1060,7 +1517,7 @@
             const bankRow = document.getElementById('rBankRow');
             if (item.paymentMethod === '계좌이체') {
                 bankRow.classList.remove('hidden');
-                document.getElementById('rBankInfo').innerText = `${item.bankName} ${item.accountNumber} (예금주: ${item.accountHolder})`;
+                document.getElementById('rBankInfo').innerText = `${item.bankName} ${item.accountNumber} (${t('holderPrefix')}: ${item.accountHolder})`;
             } else {
                 bankRow.classList.add('hidden');
             }
@@ -1079,7 +1536,7 @@
             
             const opt = {
                 margin:       [8, 8, 8, 8],
-                filename:     `고금매입확인서_${currentReceiptItem.customerName}_${currentReceiptItem.date}.pdf`,
+                filename:     `${t('pdfFilenamePrefix')}_${currentReceiptItem.customerName}_${currentReceiptItem.date}.pdf`,
                 image:        { type: 'jpeg', quality: 1.0 },
                 html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -1113,8 +1570,8 @@
 
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "고금매입대장");
-            XLSX.writeFile(workbook, `고금매입대장_${new Date().toISOString().substring(0, 10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, t('excelSheetName'));
+            XLSX.writeFile(workbook, `${t('excelFilenamePrefix')}_${new Date().toISOString().substring(0, 10)}.xlsx`);
         }
     </script>
 </body>
